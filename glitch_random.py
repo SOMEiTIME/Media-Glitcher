@@ -4,36 +4,39 @@ import random
 
 
 
-file = open("mess_with.txt","r")
+file = open("mess_with.txt","r") #mess_with.txt is the filename to read
+								#it'd be great if this could be done via the commandline, without converting to .txt
 print "read file"
 header = []
-for num in range(0,200):
+for num in range(0,200): #read past the header lines, stored for later
 	header.append(file.readline(num))
 
 
 body = []
 
-for line in file:
+#loads the whole file into body
+#shouldn't we go line by line? Things are very inneficient here
+#the advantage of loading the whole file in, is that glitch can run multiple times on one file, increasing the variety of effects
+for line in file:  
 	body.append(line)
 
-for num in range(201):
+for num in range(201): #further removes some part from the body (the ending of the file shouldn't be messed with either)
 	body.pop(0)
 
 file.close()
 
-newfile = open("new.txt","w")
+newfile = open("new.txt","w") #the new, mangled version of the file will be called new.txt
+							#this could also be done through the commandline
 
 
+#this function is the heart of the program, glitch will cause video distortion effects of length interval
+	#it does this via swapping data for a certain length
 def glitch(body,interval,offset): 
 
 	counter = 0
 	for num in range(0,len(body)):
 
 		if counter == interval:
-
-
-
-
 			place1 = num
 			place2 = num-(1+random.randint(0,2))
 			len1 = len(body[place1])
@@ -62,21 +65,15 @@ def glitch(body,interval,offset):
 
 			if len(body[place1]) != len(original):
 				body[place1] = original
-			#else:
-				#print body[num]
-			#body[num-2] = body[num-5]
-			#body[num-3] = body[num-1]
-			#print body[num]
-			#print len(body[num])
-			#print len1
 
-			#assert len(body[num]) == len(body[num-1])
 			counter = 0
 		else:
-			counter = counter + 1
+			counter = counter + 1 
 	return body 
 
 
+
+#these settings have gotten good results
 body = glitch(body,2000,4)
 body = glitch(body,200,50)
 #body = glitch(body,25,13)
@@ -84,7 +81,7 @@ body = glitch(body,200,50)
 
 
 
-for i in range(2):
+for i in range(2): #an easy way to reglitch multiple times 
 	body = glitch(body,1049-i,1)
 
 newfile.writelines(header)
