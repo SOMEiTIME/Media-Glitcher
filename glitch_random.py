@@ -1,12 +1,22 @@
 #glitcher
 
-import random 
+import random, sys
 
 
+if len(sys.argv) >= 2:
+	inputfile = sys.argv[1]
+	outputfile = sys.argv[2]
+else:
+	print("\nUsage:\n     glitch_random.py inputfile outputfile\n")
+	exit()
 
-file = open("mess_with.txt","r") #mess_with.txt is the filename to read
+print("inputfile: ", str(sys.argv[1]))
+print("outputfile: ", str(sys.argv[2]))
+
+
+file = open(inputfile,"r") #mess_with.txt is the filename to read
 								#it'd be great if this could be done via the commandline, without converting to .txt
-print "read file"
+print("read file")
 header = []
 for num in range(0,200): #read past the header lines, stored for later
 	header.append(file.readline(num))
@@ -25,7 +35,7 @@ for num in range(201): #further removes some part from the body (the ending of t
 
 file.close()
 
-newfile = open("new.txt","w") #the new, mangled version of the file will be called new.txt
+newfile = open(outputfile,"w") #the new, mangled version of the file will be called new.txt
 							#this could also be done through the commandline
 
 
@@ -38,7 +48,7 @@ def glitch(body,interval,offset):
 
 		if counter == interval:
 			place1 = num
-			place2 = num-(1+random.randint(0,2))
+			place2 = num-(1+random.randint(0,2)) #introduced randomness here for more organic looking results
 			len1 = len(body[place1])
 			len2 = len(body[place2])
 			original = body[place1]
