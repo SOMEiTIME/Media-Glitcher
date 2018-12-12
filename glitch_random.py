@@ -19,7 +19,6 @@ file = open(inputfile,"r") #mess_with.txt is the filename to read
 header = []
 
 body = []
-							
 for line in file:
 	body.append(line)
 
