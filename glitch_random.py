@@ -1,4 +1,5 @@
-#glitcher
+#!/usr/bin/env python2.7
+
 
 import random, sys, os
 
@@ -10,27 +11,29 @@ else:
 	print("\nUsage:\n     glitch_random.py inputfile outputfile\n")
 	exit()
 
+print "inputfile: ", str(sys.argv[1])
+print "outputfile: ", str(sys.argv[2]) 
 
 
-file = open(inputfile,"rb") #mess_with.txt is the filename to read
-								#it'd be great if this could be done via the commandline, without converting to .txt
-
+file = open(inputfile,"r") #mess_with.txt is the filename to read
 header = []
-for num in range(0,200): #read past the header lines, stored for later
-	header.append(file.readline(num))
 
+body = []
+							
+for line in file:
+	body.append(line)
+
+for num in range(201):
+	header.append(body.pop(0))
 
 
 #loads the whole file into body
 #shouldn't we go line by line? Things are very inneficient here
 #the advantage of loading the whole file in, is that glitch can run multiple times on one file, increasing the variety of effects
-body = file.read(os.stat(sys.argv[1]).st_size-20); #how much to not mess with?
-#for num in range(201): #further removes some part from the body (the ending of the file shouldn't be messed with either)
-	#body.pop(0)
 
 file.close()
 
-newfile = open(outputfile,"wb") #the new, mangled version of the file will be called new.txt
+newfile = open(outputfile,"w") #the new, mangled version of the file will be called new.txt
 							#this could also be done through the commandline
 
 #need to change these string based operations into byte based operations
@@ -81,19 +84,19 @@ def glitch(body,interval,offset):
 
 
 #these settings have gotten good results
-body = glitch(body,2000,4)
-body = glitch(body,200,50)
-body = glitch(body,25,13)
+#body = glitch(body,2000,4)
+#body = glitch(body,200,50)
+#body = glitch(body,25,13)
 #body = glitch(body,23,49)
 
 
 
-for i in range(2): #an easy way to reglitch multiple times 
-	body = glitch(body,1049-i,1)
+for i in range(20): #an easy way to reglitch multiple times 
+	body = glitch(body,3500-i,2000)
 
 newfile.writelines(header)
 
-newfile.write(body)
+newfile.writelines(body)
 
 
 
