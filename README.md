@@ -13,7 +13,7 @@ In media_glitcher.py there are a couple of sections to adjust:
  * Glitch operations can be adjusted, changed, or removed
 
 
-## Recommended Settings
+## Some Recommended Settings
 These settings have gotten good results on their own and together:
 ```Python 
     media_to_work_on.glitch_random_swap(200, 50)
