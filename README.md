@@ -1,4 +1,4 @@
-# project-video-glitch
+# Media-Glitcher
 for python2.7
 
 ##  Usage
