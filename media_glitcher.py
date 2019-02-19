@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.7
 import sys, os
-import media
+from media import media
 
 
 if len(sys.argv) >= 2:
@@ -23,14 +23,16 @@ media_to_work_on = media(file,new_file,header_length)
 #can add or take away glitch operations in this section
 
 #these settings have gotten good results
-#media_to_work_on.glitch_random_swap(body,200,50)
-#media_to_work_on.glitch_random_swap(body,100,3)
-#media_to_work_on.glitch_corrupt(body,200,30)
-#media_to_work_on.glitch_corrupt(body,400,3)
-#media_to_work_on.glitch_random_swap(body,40,3)
+#media_to_work_on.glitch_random_swap(200,50)
+#media_to_work_on.glitch_random_swap(100,3)
+#media_to_work_on.glitch_corrupt(200,30)
+#media_to_work_on.glitch_corrupt(400,3)
+#media_to_work_on.glitch_random_swap(6,0)
+#media_to_work_on.glitch_random_swap(300,1)
 
-media_to_work_on.glitch_corrupt(100,3)
-media_to_work_on.glitch_random_swap(200,4)
+#media_to_work_on.glitch_corrupt(300,5)
+media_to_work_on.glitch_random_swap(88,0)
+media_to_work_on.glitch_random_swap(142,0)
 
 
 #end of the glitch operations section
@@ -38,7 +40,7 @@ media_to_work_on.glitch_random_swap(200,4)
 media_to_work_on.print_to_new_file()
 
 file.close()
-newfile.close()
+new_file.close()
 
 
 

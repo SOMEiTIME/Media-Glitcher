@@ -5,14 +5,12 @@ import random
 class media(object):
 
     def __init__(self, input_file, output_file, header_length):
-
         self.__header = []
         self.__body = []
         self.__output_file = output_file
         for line in input_file:
             self.__body.append(line)
         for num in range(header_length):
-        #for num in range(201):
             self.__header.append(self.__body.pop(0))
         return
 
@@ -27,6 +25,20 @@ class media(object):
             count = count +1
         return new_line
 
+    def __swap_at(self, place1, place2):
+        len1 = len(self.__body[place1])
+        len2 = len(self.__body[place2])
+        original = self.__body[place1]
+        if len1 < len2:
+            new_line = self.__generate_fitting_line(place1, place2);
+        else:
+            new_line = self.__generate_fitting_line(place2, place1);
+        self.__body[place1] = new_line[:len(new_line) - 4]
+        if len(self.__body[place1]) != len(original):
+            self.__body[place1] = original
+
+        return
+
     def glitch_random_swap(self, interval, flavour): 
         counter = 0
         offset_counter = 0
@@ -34,16 +46,7 @@ class media(object):
             if counter == interval:
                 place1 = num
                 place2 = num-(1+random.randint(0, 2 + flavour % 10)) #introduced randomness here for more organic looking results
-                len1 = len(self.__body[place1])
-                len2 = len(self.__body[place2])
-                original = self.__body[place1]
-                if len1 < len2:
-                    new_line = self.__generate_fitting_line(place1, place2);
-                else:
-                    new_line = self.__generate_fitting_line(place2, place1);
-                self.__body[place1] = new_line[:len(new_line) - 4]
-                if len(self.__body[place1]) != len(original):
-                    self.__body[place1] = original
+                self.__swap_at(place1,place2)
                 counter = flavour
             else:
                 counter = counter + 1 
@@ -57,21 +60,11 @@ class media(object):
                 for i in range(corruption):
                     place1 = num-i
                     place2 = num-(i+1+random.randint(0, 5 + corruption))
-                    len1 = len(self.__body[place1])
-                    len2 = len(self.__body[place2])
-                    original = self.__body[place1]
-                if len1 < len2:
-                    new_line =  self.__generate_fitting_line(place1, place2);
-                else:
-                    new_line =  self.__generate_fitting_line(place2, place1);
-                    self.__body[place1] = new_line[: len(new_line)-4]
-                    if len(self.__body[place1]) != len(original):
-                        self.__body[place1] = original
+                    self.__swap_at(place1,place2)    
                 counter = 0
                 corruption = corruption + 1
             else:
                 counter = counter + 1
-
         return  
 
     def print_to_new_file(self):
