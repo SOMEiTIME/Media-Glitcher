@@ -8,8 +8,10 @@ python2.7 media_glitcher.py input_file_name output_file_name
 ```
 
 In media_glitcher.py there are a couple of areas to play around with
-  The header_length variable may be adjusted as desired, 15 is good for images and video 
-  *Glitch operations can be adjusted, changed, or removed
+
+ * The header_length variable may be adjusted as desired, 15 is good for images and video 
+
+ * Glitch operations can be adjusted, changed, or removed
 
 
 ## Recommended Settings
