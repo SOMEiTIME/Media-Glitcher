@@ -2,8 +2,16 @@
 
 import random
 
+#
+# This class reads in the given file, 
+# then perform glitching operations as desired,
+# and then print the new file to an output file
+#
 class media(object):
-
+    #
+    # Initializer method
+    # Requires two open file pointers, and the length of the header of the format
+    #
     def __init__(self, input_file, output_file, header_length):
         self.__header = []
         self.__body = []
@@ -13,7 +21,10 @@ class media(object):
         for num in range(header_length):
             self.__header.append(self.__body.pop(0))
         return
-
+    #
+    # Helper method for the glitch methods
+    #
+    #
     def __generate_fitting_line(self, lineA, lineB):
         new_line = ""
         for char in self.__body[lineA]:
@@ -25,6 +36,11 @@ class media(object):
             count = count +1
         return new_line
 
+
+    #
+    # Helper method for the glitch methods
+    #
+    #
     def __swap_at(self, place1, place2):
         len1 = len(self.__body[place1])
         len2 = len(self.__body[place2])
@@ -39,6 +55,11 @@ class media(object):
 
         return
 
+    # 
+    # Swaps lines randomnly, shortening those lines as needed. 
+    # Flavor introduces more distance (in lines) between the two swapped lines
+    #
+    #
     def glitch_random_swap(self, interval, flavour): 
         counter = 0
         offset_counter = 0
@@ -52,6 +73,10 @@ class media(object):
                 counter = counter + 1 
         return 
 
+    #
+    # Swaps lines random width apart, as it goes on, the width between swapped lines
+    #   will get worse and the process is repeated more times (increasing the glitching affect)
+    #
     def glitch_corrupt(self, interval, flavour):     
         corruption = 1
         counter = 0
@@ -67,6 +92,9 @@ class media(object):
                 counter = counter + 1
         return  
 
+    #
+    # Prints the glitched version of the file to a new file
+    #
     def print_to_new_file(self):
         self.__output_file.writelines(self.__header)
         self.__output_file.writelines(self.__body)

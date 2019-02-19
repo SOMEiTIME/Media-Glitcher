@@ -1,4 +1,7 @@
 #!/usr/bin/env python2.7
+
+# Main method and customisation area for running the media class and glitching media
+
 import sys, os
 from media import media
 
