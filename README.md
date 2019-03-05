@@ -28,9 +28,9 @@ These settings have gotten good results on their own and together:
 ## Examples
 When used on images:
 
-<img src="examples/lightning-glitched2.jpg" alt="lightning" width="250">
+<img src="examples/lightning-glitched.jpg" alt="lightning" width="250">
 
-<img src="examples/confetti-glitched2.jpg" alt="confetti" width="250">
+<img src="examples/confetti-glitched.jpg" alt="confetti" width="250">
 
 When used on video:
 
