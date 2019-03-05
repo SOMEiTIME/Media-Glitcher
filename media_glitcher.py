@@ -30,12 +30,12 @@ media_to_work_on = media(file,new_file,header_length)
 #media_to_work_on.glitch_random_swap(100,3)
 #media_to_work_on.glitch_corrupt(200,30)
 #media_to_work_on.glitch_corrupt(400,3)
-#media_to_work_on.glitch_random_swap(6,0)
+#media_to_work_on.glitch_random_swap(56,4)
 #media_to_work_on.glitch_random_swap(300,1)
 
-#media_to_work_on.glitch_corrupt(300,5)
-media_to_work_on.glitch_random_swap(88,0)
-media_to_work_on.glitch_random_swap(142,0)
+media_to_work_on.glitch_corrupt(5000,8)
+media_to_work_on.glitch_random_swap(820,3)
+#media_to_work_on.glitch_random_swap(142,0)
 
 
 #end of the glitch operations section

@@ -5,7 +5,7 @@ import random
 #
 # This class reads in the given file, 
 # then perform glitching operations as desired,
-# and then print the new file to an output file
+# and then can print the new file to an output file
 #
 class media(object):
     #
@@ -23,7 +23,7 @@ class media(object):
         return
     #
     # Helper method for the glitch methods
-    #
+    # Formats lineA to have the length of lineB
     #
     def __generate_fitting_line(self, lineA, lineB):
         new_line = ""
@@ -39,7 +39,7 @@ class media(object):
 
     #
     # Helper method for the glitch methods
-    #
+    # copies the line at place1 to place2, or from the line at place2 to place1
     #
     def __swap_at(self, place1, place2):
         len1 = len(self.__body[place1])
