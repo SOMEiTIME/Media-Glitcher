@@ -22,3 +22,18 @@ These settings have gotten good results on their own and together:
     media_to_work_on.glitch_corrupt(400, 3)
     media_to_work_on.glitch_random_swap(40, 3)
 ```
+
+
+
+## Examples
+When used on images:
+
+<img src="lightning-glitched2.jpg" alt="lightning" width="250">
+
+<img src="confetti-glitched2.jpg" alt="confetti" width="250">
+
+When used on video:
+
+<img src="gif-glitched-waves.gif" alt="gif-waves" width="250">
+
+
