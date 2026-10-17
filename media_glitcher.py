@@ -5,7 +5,6 @@
 import sys, os
 from media import media
 
-
 if len(sys.argv) >= 2:
     input_file = sys.argv[1]
     output_file = sys.argv[2]
@@ -14,10 +13,9 @@ else:
     exit()
 
 print "Input File: ", str(sys.argv[1])
-print "Output File: ", str(sys.argv[2]) 
+print "Output File: ", str(sys.argv[2])
 
-
-file = open(input_file,"r") 
+file = open(input_file,"r")
 new_file = open(output_file,"w")
 
 header_length = 15 #the length of the header in number of lines, messing with the headers will just break the media
@@ -36,14 +34,9 @@ media_to_work_on = media(file,new_file,header_length)
 media_to_work_on.glitch_corrupt(5000,8)
 media_to_work_on.glitch_random_swap(820,3)
 #media_to_work_on.glitch_random_swap(142,0)
-
-
 #end of the glitch operations section
 
 media_to_work_on.print_to_new_file()
 
 file.close()
 new_file.close()
-
-
-

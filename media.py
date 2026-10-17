@@ -36,7 +36,6 @@ class media(object):
             count = count +1
         return new_line
 
-
     #
     # Helper method for the glitch methods
     # copies the line at place1 to place2, or from the line at place2 to place1

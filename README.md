@@ -12,7 +12,6 @@ In media_glitcher.py there are a couple of sections to adjust:
 
  * Glitch operations can be adjusted, changed, or removed
 
-
 ## Some Recommended Settings
 These settings have gotten good results on their own and together:
 ```Python 
@@ -22,8 +21,6 @@ These settings have gotten good results on their own and together:
     media_to_work_on.glitch_corrupt(400, 3)
     media_to_work_on.glitch_random_swap(40, 3)
 ```
-
-
 
 ## Examples
 When used on images:
@@ -35,5 +32,3 @@ When used on images:
 When used on video:
 
 <img src="examples/gif-glitched-waves.gif" alt="gif-waves" width="250">
-
-
