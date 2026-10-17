@@ -1,22 +1,23 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 # Main method and customisation area for running the media class and glitching media
 
 import sys, os
 from media import media
 
-if len(sys.argv) >= 2:
+if len(sys.argv) >= 3:
     input_file = sys.argv[1]
     output_file = sys.argv[2]
 else:
     print("\nUsage:\n     media_glitcher.py inputfile outputfile\n")
-    exit()
+    sys.exit(1)
 
-print "Input File: ", str(sys.argv[1])
-print "Output File: ", str(sys.argv[2])
+print("Input File: ", str(sys.argv[1]))
+print("Output File: ", str(sys.argv[2]))
 
-file = open(input_file,"r")
-new_file = open(output_file,"w")
+# latin-1 maps bytes 1:1 to characters, so binary media survives the text round trip
+file = open(input_file,"r",encoding="latin-1",newline="")
+new_file = open(output_file,"w",encoding="latin-1",newline="")
 
 header_length = 15 #the length of the header in number of lines, messing with the headers will just break the media
 media_to_work_on = media(file,new_file,header_length)

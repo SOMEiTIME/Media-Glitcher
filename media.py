@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 import random
 
@@ -7,7 +7,7 @@ import random
 # then perform glitching operations as desired,
 # and then can print the new file to an output file
 #
-class media(object):
+class media:
     #
     # Initializer method
     # Requires two open file pointers, and the length of the header of the format
