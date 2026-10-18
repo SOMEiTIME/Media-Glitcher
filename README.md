@@ -39,7 +39,7 @@ How a format stores its data decides how it reacts. "Tested" means glitched with
 
 | Format | How it reacts | Status |
 |---|---|---|
-| JPEG | Small byte changes spread into big colour shifts and smeared blocks. Usually still opens. Try `--preset bytes-starter`. | Tested |
+| JPEG | Small byte changes spread into horizontal streaks, shifted rows and colour bands. Usually still opens. Try `--preset bytes-starter`. | Tested |
 | BMP, uncompressed TIFF | Always opened. Damage stays where you put it (shifted bands, speckle), so it needs much heavier settings: try `--preset bytes-uncompressed`. Light settings are invisible. | Tested |
 | PNG | Opens, but the image goes black from the first damaged spot, because the pixels are compressed and checksummed. A PNG-aware mode is planned. | Tested |
 | PPM/PGM | Like BMP: raw pixels after a tiny header. | Expected |
