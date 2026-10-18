@@ -1,13 +1,13 @@
 # Media-Glitcher
 
-Small Python 2.7 tool that glitches media files (images, video) by swapping and corrupting lines of the raw file text. Personal/art project; no tests.
+Small Python 3 tool that glitches media files (images, video) by swapping and corrupting lines of the raw file text. Personal/art project; no tests.
 
 ## Run
 ```
-python2.7 media_glitcher.py input_file output_file
+python3 media_glitcher.py input_file output_file
 ```
-- Python 2 only (uses `print` statements). Don't port to Python 3 or add py3-only syntax unless asked.
-- `python2.7` may not be installed locally, so check before trying to run it.
+- Python 3 (ported from 2.7). Files are opened as latin-1 so binary data round-trips byte for byte.
+- Don't run it on files in `examples/`; the output path gets overwritten.
 
 ## Layout
 - `media_glitcher.py` — entry point and the customization area. Glitch operations are listed (and commented in/out) here; edit this to change the effect.

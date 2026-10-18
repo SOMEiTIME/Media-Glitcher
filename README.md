@@ -1,9 +1,9 @@
 # Media-Glitcher
-for python2.7
+for python 3
 
 ##  Usage
 ```
-python2.7 media_glitcher.py input_file_name output_file_name
+python3 media_glitcher.py input_file_name output_file_name
 ```
 
 In media_glitcher.py there are a couple of sections to adjust:
