@@ -23,10 +23,17 @@ class CliTest(unittest.TestCase):
     def test_bundled_presets_are_valid(self):
         found = presets.list_presets()
         builtin = {name for group, name, _ in found if group == "builtin"}
-        self.assertEqual(builtin, {"default", "recommended", "classic"})
+        self.assertEqual(builtin, {"default", "recommended", "classic",
+                                   "swaps-frequent", "swaps-sparse", "corrupt-escalating"})
         for group, name, description in found:
             presets.load(group + "/" + name)
             self.assertFalse(description.startswith("(invalid"), name)
+
+    def test_recommended_parts_cover_recommended(self):
+        parts = []
+        for name in ("swaps-sparse", "swaps-frequent", "corrupt-escalating"):
+            parts += presets.load(name)["operations"]
+        self.assertEqual(sorted(parts), sorted(presets.load("recommended")["operations"]))
 
     def test_groups_save_and_lookup(self):
         original = presets.PRESET_DIR

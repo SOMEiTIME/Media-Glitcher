@@ -1,0 +1,7 @@
+{
+  "description": "One occasional swap (every 200 lines, flavour 50), from the recommended set",
+  "header_length": 15,
+  "operations": [
+    {"type": "swap", "interval": 200, "flavour": 50}
+  ]
+}

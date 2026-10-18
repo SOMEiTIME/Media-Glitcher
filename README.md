@@ -45,7 +45,7 @@ python3 media_glitcher.py in.avi out.avi --swap 200,50 --corrupt 200,30 --save-p
 Options on the command line override a preset's `header_length` and `seed`. A preset with a `seed` gives identical output every run, which makes presets usable as test cases.
 `presets.py` has no CLI dependencies, so other programs can `import presets` to load, validate and apply them.
 
-`--list-presets` shows them grouped. `recommended` holds the settings that have worked well on their own and together.
+`--list-presets` shows them grouped. `recommended` holds the settings that have worked well on their own and together (five operations). It's also split into three smaller presets, `swaps-sparse`, `swaps-frequent` and `corrupt-escalating`, so you can use one or a few at a time, e.g. `--preset swaps-frequent --preset corrupt-escalating`. Using all three runs the same operations as `recommended`, but in a different order, so the result differs.
 
 ## Tests
 ```
