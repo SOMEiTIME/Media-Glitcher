@@ -42,6 +42,7 @@ python3 media_glitcher.py --list-presets
 ## Guardrails
 - Done means `.claude/verify.sh` passes. A Stop hook runs it when you finish a turn with work on the branch and sends you back to fix failures. If it can't pass (missing tool, flaky test), tell the user why instead of weakening the script.
 - `.claude/hooks/block-dangerous.sh` blocks force pushes, pushes to main/master, deleting main/master, `git reset --hard origin/...`, recursive `rm` outside the repo, reading `.env`/key/credential files, and `curl | sh`. If you need something it blocks, ask the user. Don't work around it or edit the hooks or `.claude/settings.json` to get past it.
+- Shell commands run in a sandbox: they can write only inside the repo and temp directories, and reach only the allowed hosts. `git push` and `gh pr ...` run outside it, but only on their own, not chained with `&&`. Other `gh` commands fail inside it. If the sandbox blocks something you need, tell the user rather than working around it.
 - Always work on a branch and finish with a PR; never commit or push to main/master. Commit in small checkpoints as you go.
 - Ask before adding a new dependency.
 <!-- claude-harness:end -->

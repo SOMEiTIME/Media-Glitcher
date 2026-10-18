@@ -7,8 +7,8 @@
 #   - commands that name .env files, keys or credential files
 #   - piping a download into a shell (curl ... | sh)
 # Pattern matching is best-effort: it catches the forms Claude usually writes,
-# not every possible spelling. Fails open (exit 0 with a warning) if the input
-# can't be parsed, so a broken hook never blocks every command.
+# not every possible spelling. Fails closed: if the input can't be parsed (no
+# jq, python3 or node), every command is blocked until that's fixed.
 # Written for bash 3.2, which is what macOS ships.
 
 set -f # words from the command are data; never glob-expand them
@@ -16,8 +16,8 @@ hook_dir="$(cd "$(dirname "$0")" && pwd)"
 input="$(cat)"
 
 if ! command="$(printf '%s' "$input" | "$hook_dir/json-field.sh" tool_input.command)"; then
-  echo "block-dangerous.sh: couldn't parse hook input (needs jq, python3 or node); allowing command unchecked" >&2
-  exit 0
+  echo "Blocked by .claude/hooks/block-dangerous.sh: couldn't parse the hook input, so the command can't be checked. It needs jq, python3 or node on PATH; ask the user to fix that." >&2
+  exit 2
 fi
 [ -z "$command" ] && exit 0
 

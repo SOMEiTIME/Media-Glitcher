@@ -27,7 +27,8 @@
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
       "Read(~/.netrc)",
-      "Read(~/.git-credentials)"
+      "Read(~/.git-credentials)",
+      "Bash(sudo *)"
     ]
   },
   "hooks": {
@@ -54,5 +55,21 @@
         ]
       }
     ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "allowUnsandboxedCommands": false,
+    "excludedCommands": [
+      "git push *",
+      "gh pr *"
+    ],
+    "network": {
+      "allowedDomains": [
+        "github.com",
+        "api.github.com",
+        "registry.yarnpkg.com",
+        "registry.npmjs.org"
+      ]
+    }
   }
 }
