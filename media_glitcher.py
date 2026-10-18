@@ -2,7 +2,7 @@
 
 # Command line entry point for running the media class and glitching media
 
-import argparse, random, sys
+import argparse, random
 import presets
 from media import media
 
@@ -27,18 +27,23 @@ def preset_arg(text):
     except presets.PresetError as error:
         raise argparse.ArgumentTypeError(str(error))
 
+# header_length and seed from a preset, the settings the command line can override
+def preset_settings(preset):
+    return {k: v for k, v in preset.items() if k in ("header_length", "seed") and v is not None}
+
 # argparse action that records operations in the order they appear on the command line
 class AddOperation(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
-        operations = getattr(namespace, "operations", None) or []
         if self.dest == "preset":
-            operations.extend(values["operations"])
-            settings = getattr(namespace, "preset_settings", None) or {}
-            settings.update({k: v for k, v in values.items() if k in ("header_length", "seed")})
-            namespace.preset_settings = settings
+            new = values["operations"]
+            namespace.preset_settings = {**namespace.preset_settings, **preset_settings(values)}
         else:
-            operations.append((self.dest,) + values)
-        namespace.operations = operations
+            new = [(self.dest,) + values]
+        namespace.operations = namespace.operations + new
+
+# first argument that isn't None
+def first_set(*values):
+    return next((v for v in values if v is not None), None)
 
 def build_parser():
     parser = argparse.ArgumentParser(
@@ -67,7 +72,7 @@ def build_parser():
 
 def main(argv=None):
     parser = build_parser()
-    parser.set_defaults(operations=None, preset_settings={})
+    parser.set_defaults(operations=[], preset_settings={})
     args = parser.parse_args(argv)
 
     if args.list_presets:
@@ -75,27 +80,36 @@ def main(argv=None):
             print("%-20s %s" % (name, description))
         return
 
-    try:
-        default = presets.load(DEFAULT_PRESET)
-    except presets.PresetError as error:
-        parser.error(str(error))
-    operations = args.operations or default["operations"]
-    header_length = first_set(args.header_length, args.preset_settings.get("header_length"),
-                              None if args.operations else default.get("header_length"), DEFAULT_HEADER_LENGTH)
-    seed = first_set(args.seed, args.preset_settings.get("seed"))
+    operations, settings = args.operations, args.preset_settings
+    if not operations:
+        try:
+            default = presets.load(DEFAULT_PRESET)
+        except presets.PresetError as error:
+            parser.error(str(error))
+        operations, settings = default["operations"], preset_settings(default)
+    header_length = first_set(args.header_length, settings.get("header_length"), DEFAULT_HEADER_LENGTH)
+    seed = first_set(args.seed, settings.get("seed"))
     if header_length < 0:
         parser.error("--header-length must not be negative")
 
+    # --save-preset on its own only saves; otherwise both files are needed
+    glitching = args.input_file is not None or not args.save_preset
+    if glitching:
+        if args.output_file is None:
+            parser.error("input_file and output_file are required")
+        if args.input_file == args.output_file:
+            parser.error("input and output files must be different")
+
     if args.save_preset:
-        path = presets.save(args.save_preset, operations, header_length, seed, args.description)
+        try:
+            path = presets.save(args.save_preset, operations, header_length, seed, args.description)
+        except OSError as error:
+            parser.exit(1, "error: cannot save preset: %s\n" % error)
         if not args.quiet:
             print("Saved preset: ", path)
-        if args.input_file is None:
-            return
-    if args.input_file is None or args.output_file is None:
-        parser.error("input_file and output_file are required")
-    if args.input_file == args.output_file:
-        parser.error("input and output files must be different")
+    if not glitching:
+        return
+
     if seed is not None:
         random.seed(seed)
 
@@ -116,10 +130,6 @@ def main(argv=None):
         media_to_work_on = media(lines, new_file, header_length)
         presets.apply(media_to_work_on, operations)
         media_to_work_on.print_to_new_file()
-
-# first argument that isn't None
-def first_set(*values):
-    return next((v for v in values if v is not None), None)
 
 if __name__ == "__main__":
     main()

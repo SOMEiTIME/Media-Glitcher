@@ -23,6 +23,10 @@ KNOWN_FIELDS = ("description", "header_length", "seed", "operations")
 class PresetError(ValueError):
     pass
 
+# True for real integers; bool is a subclass of int, but true/false aren't valid numbers here
+def is_int(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
 #
 # Checks a preset dict and returns it with operations normalised to
 # (type, interval, flavour) tuples. Raises PresetError on anything malformed
@@ -30,7 +34,7 @@ class PresetError(ValueError):
 def validate(data):
     if not isinstance(data, dict):
         raise PresetError("preset must be a JSON object")
-    unknown = set(data) - set(KNOWN_FIELDS)
+    unknown = set(data).difference(KNOWN_FIELDS)
     if unknown:
         raise PresetError("unknown field(s): " + ", ".join(sorted(unknown)))
     operations = data.get("operations")
@@ -43,16 +47,15 @@ def validate(data):
         if op["type"] not in OPERATION_TYPES:
             raise PresetError("operation %d: type must be one of %s" % (number, ", ".join(OPERATION_TYPES)))
         for key in ("interval", "flavour"):
-            if not isinstance(op[key], int) or isinstance(op[key], bool):
+            if not is_int(op[key]):
                 raise PresetError("operation %d: %s must be an integer" % (number, key))
         if op["interval"] < 0:
             raise PresetError("operation %d: interval must not be negative" % number)
         checked.append((op["type"], op["interval"], op["flavour"]))
     for key in ("header_length", "seed"):
-        value = data.get(key)
-        if value is not None and (not isinstance(value, int) or isinstance(value, bool)):
+        if data.get(key) is not None and not is_int(data[key]):
             raise PresetError("'%s' must be an integer" % key)
-    if data.get("header_length") is not None and data["header_length"] < 0:
+    if (data.get("header_length") or 0) < 0:
         raise PresetError("'header_length' must not be negative")
     if not isinstance(data.get("description", ""), str):
         raise PresetError("'description' must be a string")
@@ -91,18 +94,20 @@ def save(name_or_path, operations, header_length=None, seed=None, description=""
     validate(data)
     path = resolve(name_or_path)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    # same layout as the bundled presets: one operation per line, easy to edit by hand
+    settings = ",\n".join("  %s: %s" % (json.dumps(k), json.dumps(v)) for k, v in data.items() if k != "operations")
+    operations = ",\n".join("    " + json.dumps(op) for op in data["operations"])
     with open(path, "w", encoding="utf-8") as file:
-        json.dump(data, file, indent=2)
-        file.write("\n")
+        file.write('{\n%s,\n  "operations": [\n%s\n  ]\n}\n' % (settings, operations))
     return path
 
-# Names of the presets shipped in the presets folder, with their descriptions
+# (name, description) for every preset in the presets folder
 def list_presets():
     found = []
     if os.path.isdir(PRESET_DIR):
         for filename in sorted(os.listdir(PRESET_DIR)):
             if filename.endswith(".json"):
-                name = filename[:-5]
+                name = os.path.splitext(filename)[0]
                 try:
                     found.append((name, load(name).get("description", "")))
                 except PresetError as error:

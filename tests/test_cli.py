@@ -1,4 +1,4 @@
-import json, os, random, sys, tempfile, unittest
+import os, random, sys, tempfile, unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import media_glitcher, presets
@@ -56,6 +56,12 @@ class CliTest(unittest.TestCase):
         self.assertEqual((loaded["seed"], loaded["header_length"], loaded["description"]), (9, 0, "test"))
         self.assertEqual(self.run_cli("a", "--preset", saved), self.run_cli("b", "--swap", "50,2",
                          "--corrupt", "300,5", "--seed", "9", "--header-length", "0"))
+
+    def test_save_with_missing_output_saves_nothing(self):
+        saved = self.path("half.json")
+        with self.assertRaises(SystemExit):
+            media_glitcher.main([self.source, "--save-preset", saved, "--swap", "50,2"])
+        self.assertFalse(os.path.exists(saved))
 
     def test_command_line_overrides_preset_settings(self):
         saved = self.path("p.json")
