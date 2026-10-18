@@ -26,5 +26,5 @@ python3 media_glitcher.py input_file output_file
 - If you're on `master` when asked to commit, switch to a new branch first.
 - Keep commits small and focused, with a short imperative message.
 - Pushing to a branch Claude created is fine without asking. Ask before force-pushing or pushing to any other branch (including `master`).
-- Open a PR without asking once the work on a branch is done (tests pass, docs updated). Don't merge PRs.
+- Open a PR without asking once the work on a branch Claude created is done (tests pass, docs updated). For any other branch, ask first. Don't merge PRs.
 - Stage specific files (not `git add -A`), since stray files like `.DS_Store` are lying around.
