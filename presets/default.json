@@ -1,0 +1,8 @@
+{
+  "description": "What runs when no operations are given: light corruption plus occasional swaps",
+  "header_length": 15,
+  "operations": [
+    {"type": "corrupt", "interval": 5000, "flavour": 8},
+    {"type": "swap", "interval": 820, "flavour": 3}
+  ]
+}

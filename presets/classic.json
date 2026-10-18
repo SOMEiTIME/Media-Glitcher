@@ -1,0 +1,12 @@
+{
+  "description": "The original commented-out good settings from the old script",
+  "header_length": 15,
+  "operations": [
+    {"type": "swap", "interval": 200, "flavour": 50},
+    {"type": "swap", "interval": 100, "flavour": 3},
+    {"type": "corrupt", "interval": 200, "flavour": 30},
+    {"type": "corrupt", "interval": 400, "flavour": 3},
+    {"type": "swap", "interval": 56, "flavour": 4},
+    {"type": "swap", "interval": 300, "flavour": 1}
+  ]
+}

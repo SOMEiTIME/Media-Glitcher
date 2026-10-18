@@ -1,0 +1,8 @@
+{
+  "description": "Small swaps that happen often (every 100 and every 40 lines), from the recommended set",
+  "header_length": 15,
+  "operations": [
+    {"type": "swap", "interval": 100, "flavour": 3},
+    {"type": "swap", "interval": 40, "flavour": 3}
+  ]
+}
