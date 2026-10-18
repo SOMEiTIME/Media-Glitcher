@@ -20,7 +20,13 @@ With no operations given it uses the `default` preset. See `-h` for details.
 
 ## Presets
 A preset is a JSON file for a whole run: the operations in order, plus optional `header_length`, `seed` and `description`.
-A bare name is looked up in `presets/`; anything with a `/` or `.json` is treated as a path.
+Presets are kept in three groups, one folder each under `presets/`:
+
+ * `builtin/` ships with the tool: `default`, `recommended`, `classic`.
+ * `user/` is where `--save-preset NAME` puts your own presets.
+ * `test/` holds the seeded presets behind the golden test cases.
+
+A bare name is looked up in `user`, then `builtin`, then `test`, so your own preset can replace a builtin one of the same name. `group/name` (e.g. `builtin/recommended`) picks one explicitly, and anything ending in `.json` is treated as a path.
 ```json
 {
   "description": "Heavy glitching for video",
@@ -39,7 +45,7 @@ python3 media_glitcher.py in.avi out.avi --swap 200,50 --corrupt 200,30 --save-p
 Options on the command line override a preset's `header_length` and `seed`. A preset with a `seed` gives identical output every run, which makes presets usable as test cases.
 `presets.py` has no CLI dependencies, so other programs can `import presets` to load, validate and apply them.
 
-Bundled presets: `default`, `recommended` (the settings that have worked well on their own and together) and `classic`.
+`--list-presets` shows them grouped. `recommended` holds the settings that have worked well on their own and together.
 
 ## Tests
 ```

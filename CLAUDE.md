@@ -13,13 +13,13 @@ python3 media_glitcher.py input_file output_file [--swap I,F] [--corrupt I,F] [-
 - `media_glitcher.py` — argparse CLI. Glitch operations come from `--swap`/`--corrupt`/`--preset` flags (run in order given); Saved "good settings" are presets, not code.
 - `media.py` — `media` class: splits the file into header and body lines, exposes `glitch_random_swap(interval, flavour)` and `glitch_corrupt(interval, flavour)`, then `print_to_new_file()`.
 - `presets.py` — load/validate/save/apply presets; no CLI dependency, safe to import elsewhere.
-- `presets/` — bundled preset JSON files. `default` is what runs with no operations.
+- `presets/` — preset JSON files in groups: `builtin/` (shipped; `default` runs with no operations), `user/` (made by `--save-preset`), `test/` (seeded, for golden tests).
 - `tests/` — `python3 -m unittest discover -s tests`.
 - `examples/` — sample outputs referenced by the README.
 
 ## Conventions and gotchas
 - `header_length` (lines) is kept untouched so the file stays openable. 15 works for video, 0 is fine for images. Glitching the header just breaks the file.
-- Saved "good settings" are JSON files in `presets/` (format in `presets.py`) — keep them, and add new good ones rather than deleting. Use `--save-preset` to create one.
+- Saved "good settings" are JSON files in `presets/builtin/` (format in `presets.py`) — keep them, and add new good ones rather than deleting. Use `--save-preset` to create one.
 - Files are read in text mode line by line, so output is meant to be lossy and unpredictable. Not a bug.
 - `.gitignore` is allowlist-style (`*`, then `!py`, `!md`), and those entries don't look like real extension patterns. If a new file doesn't show up in `git status`, check the ignore rules or use `git add -f`.
 - Style: comment blocks above each method, double-underscore private helpers.

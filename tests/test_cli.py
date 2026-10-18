@@ -21,16 +21,33 @@ class CliTest(unittest.TestCase):
             return f.read()
 
     def test_bundled_presets_are_valid(self):
-        names = [name for name, _ in presets.list_presets()]
-        self.assertTrue({"default", "recommended", "classic"} <= set(names))
-        for name in names:
-            presets.load(name)
+        found = presets.list_presets()
+        builtin = {name for group, name, _ in found if group == "builtin"}
+        self.assertEqual(builtin, {"default", "recommended", "classic"})
+        for group, name, description in found:
+            presets.load(group + "/" + name)
+            self.assertFalse(description.startswith("(invalid"), name)
+
+    def test_groups_save_and_lookup(self):
+        original = presets.PRESET_DIR
+        presets.PRESET_DIR = self.path("presets")
+        self.addCleanup(setattr, presets, "PRESET_DIR", original)
+        for group in ("builtin", "user"):
+            os.makedirs(self.path("presets/" + group))
+        presets.save("builtin/shared", [("swap", 1, 1)], description="builtin one")
+        # a bare name saves to the user group and shadows the builtin of the same name
+        saved = presets.save("shared", [("corrupt", 2, 2)], description="user one")
+        self.assertEqual(saved, self.path("presets/user/shared.json"))
+        self.assertEqual(presets.load("shared")["description"], "user one")
+        self.assertEqual(presets.load("builtin/shared")["description"], "builtin one")
+        self.assertEqual([g for g, n, _ in presets.list_presets()], ["user", "builtin"])
 
     def test_seeded_run_is_reproducible(self):
         a = self.run_cli("a", "--preset", "recommended", "--seed", "7")
         b = self.run_cli("b", "--preset", "recommended", "--seed", "7")
         self.assertEqual(a, b)
-        self.assertNotEqual(a, open(self.source, "rb").read())
+        with open(self.source, "rb") as f:
+            self.assertNotEqual(a, f.read())
 
     def test_preset_equals_flags(self):
         flags = ["--swap", "200,50", "--swap", "100,3", "--corrupt", "200,30",
@@ -62,7 +79,8 @@ class CliTest(unittest.TestCase):
             with self.assertRaises(presets.PresetError):
                 presets.validate(data)
         broken = self.path("broken.json")
-        open(broken, "w").write("{not json")
+        with open(broken, "w") as f:
+            f.write("{not json")
         with self.assertRaises(SystemExit):
             media_glitcher.main([self.source, self.path("o"), "--preset", broken])
 

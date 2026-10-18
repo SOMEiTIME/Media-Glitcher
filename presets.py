@@ -17,6 +17,15 @@ import json, os
 # This module has no dependency on the CLI so other programs and tests can use it.
 
 PRESET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "presets")
+
+# Presets live in one subfolder per group under presets/:
+#   builtin  shipped with the tool
+#   user     saved with --save-preset (bare names are saved here)
+#   test     seeded presets used by the golden test cases
+# A bare name is looked up in this order, so a user preset can shadow a builtin one.
+# 'group/name' picks one explicitly.
+GROUPS = ("user", "builtin", "test")
+SAVE_GROUP = "user"
 OPERATION_TYPES = ("swap", "corrupt")
 KNOWN_FIELDS = ("description", "header_length", "seed", "operations")
 
@@ -59,13 +68,22 @@ def validate(data):
     return dict(data, operations=checked)
 
 #
-# Turns a preset name or path into a file path. A bare name is looked up in
-# the presets folder, anything with a path separator or .json is used as is
+# Turns a preset name or path into a file path. 'group/name' and bare names are
+# looked up in the presets folder, anything else with a path separator or .json
+# is used as is. With for_save, a bare name always goes to the user group
 #
-def resolve(name_or_path):
-    if os.sep in name_or_path or name_or_path.endswith(".json"):
+def resolve(name_or_path, for_save=False):
+    group, _, name = name_or_path.partition("/")
+    if group in GROUPS and name and "/" not in name:
+        return os.path.join(PRESET_DIR, group, name + ".json")
+    if "/" in name_or_path or os.sep in name_or_path or name_or_path.endswith(".json"):
         return name_or_path
-    return os.path.join(PRESET_DIR, name_or_path + ".json")
+    if not for_save:
+        for group in GROUPS:
+            candidate = os.path.join(PRESET_DIR, group, name_or_path + ".json")
+            if os.path.exists(candidate):
+                return candidate
+    return os.path.join(PRESET_DIR, SAVE_GROUP, name_or_path + ".json")
 
 def load(name_or_path):
     path = resolve(name_or_path)
@@ -89,24 +107,27 @@ def save(name_or_path, operations, header_length=None, seed=None, description=""
         data["seed"] = seed
     data["operations"] = [{"type": t, "interval": i, "flavour": f} for t, i, f in operations]
     validate(data)
-    path = resolve(name_or_path)
+    path = resolve(name_or_path, for_save=True)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     with open(path, "w", encoding="utf-8") as file:
         json.dump(data, file, indent=2)
         file.write("\n")
     return path
 
-# Names of the presets shipped in the presets folder, with their descriptions
+# Presets in each group as (group, name, description), groups in lookup order
 def list_presets():
     found = []
-    if os.path.isdir(PRESET_DIR):
-        for filename in sorted(os.listdir(PRESET_DIR)):
+    for group in GROUPS:
+        folder = os.path.join(PRESET_DIR, group)
+        if not os.path.isdir(folder):
+            continue
+        for filename in sorted(os.listdir(folder)):
             if filename.endswith(".json"):
                 name = filename[:-5]
                 try:
-                    found.append((name, load(name).get("description", "")))
+                    found.append((group, name, load(group + "/" + name).get("description", "")))
                 except PresetError as error:
-                    found.append((name, "(invalid: %s)" % error))
+                    found.append((group, name, "(invalid: %s)" % error))
     return found
 
 #

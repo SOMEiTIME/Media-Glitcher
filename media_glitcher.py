@@ -51,12 +51,12 @@ def build_parser():
     parser.add_argument("--corrupt", metavar="INTERVAL,FLAVOUR", type=interval_flavour,
                         action=AddOperation, help="add a corrupt operation (repeatable)")
     parser.add_argument("--preset", metavar="NAME_OR_FILE", type=preset_arg, action=AddOperation,
-                        help="add the operations from a preset, by name (from presets/) or .json path. "
+                        help="add the operations from a preset: a name, group/name (groups: user, builtin, test) or .json path. "
                              "Its header_length and seed apply unless given as options")
     parser.add_argument("--list-presets", action="store_true", help="list the available presets and exit")
     parser.add_argument("--save-preset", metavar="NAME_OR_FILE",
-                        help="write this run's settings to a preset file; with no file arguments, "
-                             "saves without glitching anything")
+                        help="write this run's settings to a preset (a bare name goes in presets/user/); "
+                             "with no file arguments, saves without glitching anything")
     parser.add_argument("--description", default="", help="description to store with --save-preset")
     parser.add_argument("--header-length", type=int, metavar="LINES",
                         help="lines at the start of the file left untouched; "
@@ -71,8 +71,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if args.list_presets:
-        for name, description in presets.list_presets():
-            print("%-14s %s" % (name, description))
+        shown = None
+        for group, name, description in presets.list_presets():
+            if group != shown:
+                print("%s%s presets:" % ("\n" if shown else "", group))
+                shown = group
+            print("  %-22s %s" % (name, description))
         return
 
     try:
