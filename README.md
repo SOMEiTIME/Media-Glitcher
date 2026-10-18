@@ -23,7 +23,7 @@ Byte mode options:
  * `--bitflip RATE` flips that fraction of bits, e.g. `0.0001` is one bit in ten thousand.
  * `--repeat SIZE,EVERY` copies a SIZE-byte chunk over the next one, once every EVERY bytes (smears and stutters).
  * `--header-bytes BYTES` bytes left untouched (default 1024, which keeps most file signatures and basic headers).
- * `--target all|jpeg-scan|jpeg-tables` chooses which part of the file byte operations change (see below). The default, `all`, is everything after `--header-bytes`.
+ * `--target TARGET` chooses which part of the file byte operations change (see below). The default, `all`, is everything after `--header-bytes`; `auto` picks a target from the file type.
 
 Every operation is repeatable, and they all run in the order given. Other options:
 
@@ -43,16 +43,27 @@ Plain byte mode can hit a JPEG's headers, tables and metadata as easily as its p
 
 Tested on baseline, progressive, restart-marker and iPhone-style JPEGs and a photo (600 runs per target): with `jpeg-scan` libjpeg decoded all of them and macOS opened 598 (both misses were progressive), against 502 with `all`. `jpeg-tables` decoded every time without a warning.
 
+## Uncompressed targets
+These targets find the raw pixels or samples from the file's own header, instead of guessing with `--header-bytes`. The header, a BMP's colour palette, and anything stored after the data (colour profiles, metadata chunks) stay untouched.
+
+ * `--target bmp-pixels`: uncompressed BMPs (1, 8, 24 and 32 bit).
+ * `--target ppm-pixels`: binary PPM, PGM and PBM.
+ * `--target wav-samples` and `--target aiff-samples`: uncompressed WAV, AIFF and AIFF-C (integer or float samples).
+
+Compressed variants (RLE BMPs, ADPCM or u-law WAVs, IMA4 AIFF-C) are refused with an error rather than damaged blindly. `--target auto` picks the right one of these, or a JPEG target, from the file's first bytes, and falls back to `all` for other files.
+
+For audio, keep `--repeat` and `--byte-swap` sizes a multiple of 24 bytes: samples then stay aligned and you get clean stutters, while other sizes turn into loud noise. Try `--preset audio-stutter` or `--preset audio-crackle`.
+
 ## What files to glitch
-How a format stores its data decides how it reacts. "Tested" means glitched with five seeds and checked that macOS can still decode it; the rest is what to expect from how the format works, not yet tried.
+How a format stores its data decides how it reacts. "Tested" means glitched with many seeds and checked that macOS (or Pillow) can still decode it; the rest is what to expect from how the format works, not yet tried.
 
 | Format | How it reacts | Status |
 |---|---|---|
 | JPEG | Small byte changes spread into horizontal streaks, shifted rows and colour bands. Use the JPEG targets above to keep the file intact. | Tested |
-| BMP, uncompressed TIFF | Always opened. Damage stays where you put it (shifted bands, speckle), so it needs much heavier settings: try `--preset bytes-uncompressed`. Light settings are invisible. | Tested |
+| BMP, uncompressed TIFF | Always opened. Damage stays where you put it (shifted bands, speckle), so it needs much heavier settings: try `--preset bytes-uncompressed`, with `--target bmp-pixels` for BMPs. Light settings are invisible. | Tested |
 | PNG | Opens, but the image goes black from the first damaged spot, because the pixels are compressed and checksummed. A PNG-aware mode is planned. | Tested |
-| PPM/PGM | Like BMP: raw pixels after a tiny header. | Expected |
-| WAV, AIFF | Raw audio after the header: clicks, stutters and repeats. Keep `--header-bytes` at least 44 for WAV. | Expected |
+| PPM/PGM/PBM | Like BMP: raw pixels after a tiny header. Use `--target ppm-pixels`. | Tested |
+| WAV, AIFF | Raw audio: clicks, stutters and repeats. Use `--target auto` and sizes that are multiples of 24 (see above). | Tested |
 | AVI (Xvid/MPEG-4) | The classic target for video glitching; the `gif-glitched-waves` example came from line mode on video. | Expected |
 | MP4/MOV (iPhone video) | Players often refuse damaged files. Convert to AVI first. | Expected |
 | GIF | Compressed (LZW), so damage tends to cut the image off, like PNG. | Expected |

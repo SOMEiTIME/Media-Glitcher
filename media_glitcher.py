@@ -91,9 +91,8 @@ def build_parser():
                         help="bytes at the start of the file left untouched by byte operations "
                              "(default: %d)" % engine.DEFAULT_HEADER_BYTES)
     parser.add_argument("--target", choices=engine.TARGETS,
-                        help="part of the file byte operations change: all (everything after --header-bytes), "
-                             "jpeg-scan (JPEG image data) or jpeg-tables (JPEG quantization tables) "
-                             "(default: %s)" % engine.DEFAULT_TARGET)
+                        help="part of the file byte operations change: all is everything after --header-bytes, "
+                             "auto picks one from the file type (default: %s)" % engine.DEFAULT_TARGET)
     parser.add_argument("--seed", type=int, help="random seed, for reproducible output")
     parser.add_argument("-q", "--quiet", action="store_true", help="don't print the file names")
     return parser

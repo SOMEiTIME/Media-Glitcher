@@ -1,0 +1,11 @@
+{
+  "description": "Test case: every byte operation on a BMP's pixels, fixed seed",
+  "target": "bmp-pixels",
+  "seed": 7,
+  "operations": [
+    {"type": "byte-swap", "size": 60, "every": 700},
+    {"type": "byte-corrupt", "every": 300},
+    {"type": "bitflip", "rate": 0.002},
+    {"type": "repeat", "size": 120, "every": 1500}
+  ]
+}

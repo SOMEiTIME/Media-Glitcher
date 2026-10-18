@@ -38,5 +38,17 @@
     "preset": "test-jpeg-tables",
     "input_file": "baseline.jpg",
     "sha256": "74e74f13d64de5d971711da0333312a6be2d975b4bde33814631488c37fd6073"
+  },
+  {
+    "name": "bmp-pixels",
+    "preset": "test-bmp",
+    "input_file": "small.bmp",
+    "sha256": "4c96468d0625923cdb5c97855e470149d596e8f06cc3cdf51e8ceb6342094aee"
+  },
+  {
+    "name": "wav-auto",
+    "preset": "test-wav",
+    "input_file": "tone.wav",
+    "sha256": "e141c76cb087bcb9de3e0071b02581e9435b94733a38beb8ca47ea03c0a2a5ff"
   }
 ]

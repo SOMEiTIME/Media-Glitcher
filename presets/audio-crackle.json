@@ -1,0 +1,8 @@
+{
+  "description": "WAV/AIFF samples only: scattered clicks and crackle from single-byte damage",
+  "target": "auto",
+  "operations": [
+    {"type": "bitflip", "rate": 0.0002},
+    {"type": "byte-corrupt", "every": 4000}
+  ]
+}
