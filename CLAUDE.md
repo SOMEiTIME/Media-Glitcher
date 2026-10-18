@@ -4,7 +4,7 @@ Small Python 3 tool that glitches media files (images, video) by swapping and co
 
 ## Run
 ```
-python3 media_glitcher.py input_file output_file [--swap I,F] [--corrupt I,F] [--byte-swap S,E] [--byte-corrupt E] [--bitflip R] [--repeat S,E] [--preset NAME_OR_FILE] [--save-preset NAME_OR_FILE] [--header-length N] [--header-bytes N] [--seed N]
+python3 media_glitcher.py input_file output_file [--swap I,F] [--corrupt I,F] [--byte-swap S,E] [--byte-corrupt E] [--bitflip R] [--repeat S,E] [--preset NAME_OR_FILE] [--save-preset NAME_OR_FILE] [--header-length N] [--header-bytes N] [--target T] [--seed N]
 python3 media_glitcher.py --list-presets
 ```
 - Python 3 (ported from 2.7), stdlib only (it also runs in a-Shell on iPhone). Files are read as bytes; line mode decodes them as latin-1 so binary data round-trips byte for byte.
@@ -15,9 +15,10 @@ python3 media_glitcher.py --list-presets
 - `engine.py` — `glitch(data, operations, ...)` runs operations with one seeded `random.Random`. A new operation needs an `OPERATIONS` entry, a function in `BYTE_FUNCTIONS` (or `LINE_FUNCTIONS`), and help text in the CLI.
 - `media.py` — line mode: `media` class splits the lines into header and body, exposes `glitch_random_swap(interval, flavour)` and `glitch_corrupt(interval, flavour)`, then `text()`.
 - `byte_ops.py` — byte mode operations; each edits a bytearray in place and keeps the header and length.
+- `jpeg.py` — JPEG marker parser for the `jpeg-scan`/`jpeg-tables` targets (`engine.TARGETS`). A target gives the byte ranges to glitch and a repair step afterwards (no stray FF in scan data, no zero quantization values).
 - `presets.py` — load/validate/save/apply presets; no CLI dependency, safe to import elsewhere.
 - `presets/` — preset JSON files. `default` is what runs with no operations.
-- `tests/` — `python3 -m unittest discover -s tests`.
+- `tests/` — `python3 -m unittest discover -s tests`. `tests/fixtures/` holds small JPEGs made with `cjpeg` (baseline, progressive, restart markers).
 - `examples/` — sample outputs referenced by the README.
 
 ## Conventions and gotchas

@@ -23,6 +23,7 @@ Byte mode options:
  * `--bitflip RATE` flips that fraction of bits, e.g. `0.0001` is one bit in ten thousand.
  * `--repeat SIZE,EVERY` copies a SIZE-byte chunk over the next one, once every EVERY bytes (smears and stutters).
  * `--header-bytes BYTES` bytes left untouched (default 1024, which keeps most file signatures and basic headers).
+ * `--target all|jpeg-scan|jpeg-tables` chooses which part of the file byte operations change (see below). The default, `all`, is everything after `--header-bytes`.
 
 Every operation is repeatable, and they all run in the order given. Other options:
 
@@ -34,12 +35,20 @@ Every operation is repeatable, and they all run in the order given. Other option
 
 With no operations given it uses the `default` preset. See `-h` for details.
 
+## JPEG targets
+Plain byte mode can hit a JPEG's headers, tables and metadata as easily as its pixels, which is why it sometimes breaks the file. The JPEG targets read the file's structure and only change one part:
+
+ * `--target jpeg-scan` changes only the compressed image data, never leaving a byte that would end it early. Headers, tables, metadata (including the thumbnail) and the extra images iPhones append stay untouched. You get streaks and shifted rows, and the file keeps its structure. Try `--preset jpeg-streaks`.
+ * `--target jpeg-tables` changes only the quantization tables, which set how coarsely detail is stored. You get a texture over the whole image, from a fine weave (`--preset jpeg-texture`) to bold block patterns (`--preset jpeg-texture-heavy`). The tables are tiny, so use small spacings like `--byte-corrupt 16` or high rates like `--bitflip 0.1`.
+
+Tested on baseline, progressive, restart-marker and iPhone-style JPEGs and a photo (600 runs per target): with `jpeg-scan` libjpeg decoded all of them and macOS opened 598 (both misses were progressive), against 502 with `all`. `jpeg-tables` decoded every time without a warning.
+
 ## What files to glitch
 How a format stores its data decides how it reacts. "Tested" means glitched with five seeds and checked that macOS can still decode it; the rest is what to expect from how the format works, not yet tried.
 
 | Format | How it reacts | Status |
 |---|---|---|
-| JPEG | Small byte changes spread into horizontal streaks, shifted rows and colour bands. Usually still opens. Try `--preset bytes-starter`. | Tested |
+| JPEG | Small byte changes spread into horizontal streaks, shifted rows and colour bands. Use the JPEG targets above to keep the file intact. | Tested |
 | BMP, uncompressed TIFF | Always opened. Damage stays where you put it (shifted bands, speckle), so it needs much heavier settings: try `--preset bytes-uncompressed`. Light settings are invisible. | Tested |
 | PNG | Opens, but the image goes black from the first damaged spot, because the pixels are compressed and checksummed. A PNG-aware mode is planned. | Tested |
 | PPM/PGM | Like BMP: raw pixels after a tiny header. | Expected |
@@ -50,7 +59,7 @@ How a format stores its data decides how it reacts. "Tested" means glitched with
 | HEIC (iPhone photos) | Not supported. Set the camera to "Most Compatible" or export as JPEG. | Not planned |
 
 ## Presets
-A preset is a JSON file for a whole run: the operations in order, plus optional `header_length`, `header_bytes`, `seed` and `description`.
+A preset is a JSON file for a whole run: the operations in order, plus optional `header_length`, `header_bytes`, `target`, `seed` and `description`.
 A bare name is looked up in `presets/`; anything with a `/` or `.json` is treated as a path.
 ```json
 {
@@ -69,7 +78,7 @@ A bare name is looked up in `presets/`; anything with a `/` or `.json` is treate
 python3 media_glitcher.py in.avi out.avi --preset recommended
 python3 media_glitcher.py in.avi out.avi --swap 200,50 --corrupt 200,30 --save-preset mine
 ```
-Options on the command line override a preset's `header_length`, `header_bytes` and `seed`. A preset with a `seed` gives identical output every run, which makes presets usable as test cases.
+Options on the command line override a preset's `header_length`, `header_bytes`, `target` and `seed`. A preset with a `seed` gives identical output every run, which makes presets usable as test cases.
 `presets.py` and `engine.py` have no CLI dependencies, so other programs can load presets with `presets.load()` and run them with `engine.glitch(data, operations, ...)`.
 
 `--list-presets` lists them. `recommended` holds the settings that have worked well on their own and together (five operations). It's also split into three smaller presets, `swaps-sparse`, `swaps-frequent` and `corrupt-escalating`, so you can use one or a few at a time, e.g. `--preset swaps-frequent --preset corrupt-escalating`. Using all three runs the same operations as `recommended`, but in a different order, so the result differs.

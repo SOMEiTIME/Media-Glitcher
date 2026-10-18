@@ -6,7 +6,7 @@ import argparse, os
 import engine, presets
 
 DEFAULT_PRESET = "default" # run when no operations are given
-SETTINGS = ("header_length", "header_bytes", "seed") # preset fields the command line can override
+SETTINGS = ("header_length", "header_bytes", "seed", "target") # preset fields the command line can override
 
 # help text for each operation flag; the parameters come from engine.OPERATIONS
 OPERATION_HELP = {
@@ -90,6 +90,10 @@ def build_parser():
     parser.add_argument("--header-bytes", type=int, metavar="BYTES",
                         help="bytes at the start of the file left untouched by byte operations "
                              "(default: %d)" % engine.DEFAULT_HEADER_BYTES)
+    parser.add_argument("--target", choices=engine.TARGETS,
+                        help="part of the file byte operations change: all (everything after --header-bytes), "
+                             "jpeg-scan (JPEG image data) or jpeg-tables (JPEG quantization tables) "
+                             "(default: %s)" % engine.DEFAULT_TARGET)
     parser.add_argument("--seed", type=int, help="random seed, for reproducible output")
     parser.add_argument("-q", "--quiet", action="store_true", help="don't print the file names")
     return parser
@@ -114,6 +118,7 @@ def main(argv=None):
     header_length = first_set(args.header_length, settings.get("header_length"), engine.DEFAULT_HEADER_LENGTH)
     header_bytes = first_set(args.header_bytes, settings.get("header_bytes"), engine.DEFAULT_HEADER_BYTES)
     seed = first_set(args.seed, settings.get("seed"))
+    target = first_set(args.target, settings.get("target"), engine.DEFAULT_TARGET)
     if header_length < 0:
         parser.error("--header-length must not be negative")
     if header_bytes < 0:
@@ -137,7 +142,8 @@ def main(argv=None):
         try:
             path = presets.save(args.save_preset, operations, seed=seed, description=args.description,
                                 header_length=header_length if uses_lines else None,
-                                header_bytes=header_bytes if uses_bytes else None, overwrite=args.force)
+                                header_bytes=header_bytes if uses_bytes and target == "all" else None,
+                                target=target if uses_bytes and target != "all" else None, overwrite=args.force)
         except (OSError, presets.PresetError) as error:
             parser.exit(1, "error: cannot save preset: %s\n" % error)
         # printed even with -q, so a mistyped name is noticed straight away
@@ -155,7 +161,7 @@ def main(argv=None):
     except OSError as error:
         parser.exit(1, "error: %s\n" % error)
     try:
-        data = engine.glitch(data, operations, header_length, header_bytes, seed)
+        data = engine.glitch(data, operations, header_length, header_bytes, seed, target)
     except engine.GlitchError as error:
         parser.exit(1, "error: %s\n" % error)
     with open(args.output_file, "wb") as file:

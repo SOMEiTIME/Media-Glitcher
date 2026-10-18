@@ -1,0 +1,11 @@
+{
+  "description": "Test case: every byte operation on a JPEG's image data, fixed seed",
+  "target": "jpeg-scan",
+  "seed": 5,
+  "operations": [
+    {"type": "byte-swap", "size": 32, "every": 900},
+    {"type": "byte-corrupt", "every": 700},
+    {"type": "bitflip", "rate": 0.0005},
+    {"type": "repeat", "size": 48, "every": 2500}
+  ]
+}

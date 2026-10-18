@@ -4,12 +4,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import media_glitcher
 
-# Golden-output cases: each one runs a preset on a generated input and compares
+# Golden-output cases: each one runs a preset on an input and compares
 # the SHA-256 of the result to the one recorded in cases.json. A failure means the
-# glitch output changed. If that was intended, regenerate with:
+# glitch output changed. The input is either generated (input_size, input_seed)
+# or a file in tests/fixtures (input_file). If the change was intended, regenerate with:
 #   python3 tests/test_golden.py --update
 # Hashes depend on Python's random module, so regenerate if they differ on another Python version.
 CASES_FILE = os.path.join(HERE, "cases.json")
+FIXTURES = os.path.join(HERE, "fixtures")
 
 def make_input(path, size, seed):
     rng = random.Random(seed)
@@ -18,9 +20,12 @@ def make_input(path, size, seed):
 
 # Runs one case and returns the SHA-256 hex digest of the output file
 def run_case(case, directory):
-    source = os.path.join(directory, "in.bin")
     output = os.path.join(directory, "out.bin")
-    make_input(source, case["input_size"], case["input_seed"])
+    if "input_file" in case:
+        source = os.path.join(FIXTURES, case["input_file"])
+    else:
+        source = os.path.join(directory, "in.bin")
+        make_input(source, case["input_size"], case["input_seed"])
     media_glitcher.main([source, output, "--preset", case["preset"], "-q"])
     with open(output, "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()

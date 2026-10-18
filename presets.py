@@ -10,6 +10,7 @@ import engine
 #     "header_length": 15,          optional, lines left alone by line operations
 #     "header_bytes": 1024,         optional, bytes left alone by byte operations
 #     "seed": 42,                   optional, makes the output reproducible
+#     "target": "jpeg-scan",        optional, which part of the file byte operations change
 #     "operations": [               run in order, see engine.OPERATIONS for every type
 #       {"type": "swap", "interval": 200, "flavour": 50},
 #       {"type": "byte-swap", "size": 64, "every": 5000}
@@ -19,7 +20,7 @@ import engine
 # This module has no dependency on the CLI so other programs and tests can use it.
 
 PRESET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "presets")
-KNOWN_FIELDS = ("description", "header_length", "header_bytes", "seed", "operations")
+KNOWN_FIELDS = ("description", "header_length", "header_bytes", "seed", "target", "operations")
 
 class PresetError(ValueError):
     pass
@@ -79,6 +80,8 @@ def validate(data):
     for key in ("header_length", "header_bytes"):
         if (data.get(key) or 0) < 0:
             raise PresetError("'%s' must not be negative" % key)
+    if data.get("target", engine.DEFAULT_TARGET) not in engine.TARGETS:
+        raise PresetError("'target' must be one of %s" % ", ".join(engine.TARGETS))
     if not isinstance(data.get("description", ""), str):
         raise PresetError("'description' must be a string")
     return dict(data, operations=checked)
@@ -110,10 +113,11 @@ def load(name_or_path):
 # Writes a preset file and returns its path. Refuses to replace an existing
 # preset unless overwrite is set
 #
-def save(name_or_path, operations, *, header_length=None, header_bytes=None, seed=None, description="",
-         overwrite=False):
+def save(name_or_path, operations, *, header_length=None, header_bytes=None, seed=None, target=None,
+         description="", overwrite=False):
     data = {"description": description}
-    for key, value in (("header_length", header_length), ("header_bytes", header_bytes), ("seed", seed)):
+    for key, value in (("header_length", header_length), ("header_bytes", header_bytes), ("seed", seed),
+                       ("target", target)):
         if value is not None:
             data[key] = value
     data["operations"] = list(operations)

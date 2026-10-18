@@ -1,0 +1,7 @@
+{
+  "description": "JPEG quantization tables only: bold block patterns and colour fringes over the whole image",
+  "target": "jpeg-tables",
+  "operations": [
+    {"type": "bitflip", "rate": 0.1}
+  ]
+}

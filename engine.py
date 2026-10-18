@@ -7,10 +7,13 @@
 # spacing and header are exact sizes. Both kinds can be mixed in one run and
 # are applied in order.
 #
+# A target limits byte operations to the parts of a format that are safe to
+# damage, e.g. only a JPEG's compressed image data.
+#
 # This module has no dependency on the CLI so other programs and tests can use it.
 
 import io, itertools, random
-import byte_ops
+import byte_ops, jpeg
 from media import media
 
 DEFAULT_HEADER_LENGTH = 15   # protected lines in line mode; 15 is good for video, 0 may suit images
@@ -29,6 +32,15 @@ LINE_FUNCTIONS = {"swap": media.glitch_random_swap, "corrupt": media.glitch_corr
 BYTE_FUNCTIONS = {"byte-swap": byte_ops.byte_swap, "byte-corrupt": byte_ops.byte_corrupt,
                   "bitflip": byte_ops.bitflip, "repeat": byte_ops.repeat}
 
+# Format targets, as (find the ranges to glitch, repair the file afterwards).
+# The "all" target is simply everything after header_bytes
+FORMAT_TARGETS = {
+    "jpeg-scan": (jpeg.scan_ranges, jpeg.repair_scan),
+    "jpeg-tables": (jpeg.table_ranges, jpeg.repair_tables),
+}
+TARGETS = ("all", *FORMAT_TARGETS)
+DEFAULT_TARGET = "all"
+
 class GlitchError(ValueError):
     pass
 
@@ -44,7 +56,8 @@ def _values(op):
 # [{"type": "byte-swap", "size": 64, "every": 5000}], and returns the new bytes.
 # The same seed and operations always give the same output
 #
-def glitch(data, operations, header_length=DEFAULT_HEADER_LENGTH, header_bytes=DEFAULT_HEADER_BYTES, seed=None):
+def glitch(data, operations, header_length=DEFAULT_HEADER_LENGTH, header_bytes=DEFAULT_HEADER_BYTES, seed=None,
+           target=DEFAULT_TARGET):
     rng = random.Random(seed)
     data = bytes(data)
     # consecutive line operations share one split, the way they always ran
@@ -52,7 +65,8 @@ def glitch(data, operations, header_length=DEFAULT_HEADER_LENGTH, header_bytes=D
         if line_mode:
             data = _line_pass(data, list(group), header_length, rng)
         else:
-            data = _byte_pass(data, list(group), header_bytes, rng)
+            ranges, repair = _target(data, target, header_bytes)
+            data = _byte_pass(data, list(group), ranges, repair, rng)
     return data
 
 def _line_pass(data, operations, header_length, rng):
@@ -66,10 +80,31 @@ def _line_pass(data, operations, header_length, rng):
         LINE_FUNCTIONS[op["type"]](lines_media, *_values(op))
     return lines_media.text().encode("latin-1")
 
-def _byte_pass(data, operations, header_bytes, rng):
-    if len(data) <= header_bytes:
-        raise GlitchError("file has only %d bytes, not more than the byte header (%d)" % (len(data), header_bytes))
-    data = bytearray(data)
+# the (start, end) ranges byte operations may change, and the repair step to run after
+def _target(data, target, header_bytes):
+    if target == "all":
+        if len(data) <= header_bytes:
+            raise GlitchError("file has only %d bytes, not more than the byte header (%d)" % (len(data), header_bytes))
+        return [(header_bytes, len(data))], None
+    find, repair = FORMAT_TARGETS[target]
+    try:
+        ranges = find(data)
+    except jpeg.JpegError as error:
+        raise GlitchError("can't use target %s: %s" % (target, error))
+    if not ranges:
+        raise GlitchError("can't use target %s: nothing to glitch in this file" % target)
+    return ranges, repair
+
+# runs byte operations on the target ranges joined together, then puts them back
+def _byte_pass(data, operations, ranges, repair, rng):
+    part = bytearray(b"".join(data[start:end] for start, end in ranges))
     for op in operations:
-        BYTE_FUNCTIONS[op["type"]](data, header_bytes, rng, *_values(op))
+        BYTE_FUNCTIONS[op["type"]](part, 0, rng, *_values(op))
+    data = bytearray(data)
+    pos = 0
+    for start, end in ranges:
+        data[start:end] = part[pos:pos + end - start]
+        pos += end - start
+    if repair:
+        repair(data, ranges)
     return bytes(data)
