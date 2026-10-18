@@ -41,8 +41,6 @@ Plain byte mode can hit a JPEG's headers, tables and metadata as easily as its p
  * `--target jpeg-scan` changes only the compressed image data, never leaving a byte that would end it early. Headers, tables, metadata (including the thumbnail) and the extra images iPhones append stay untouched. You get streaks and shifted rows, and the file keeps its structure. Try `--preset jpeg-streaks`.
  * `--target jpeg-tables` changes only the quantization tables, which set how coarsely detail is stored. You get a texture over the whole image, from a fine weave (`--preset jpeg-texture`) to bold block patterns (`--preset jpeg-texture-heavy`). The tables are tiny, so use small spacings like `--byte-corrupt 16` or high rates like `--bitflip 0.1`.
 
-Damage runs along the image as it's stored: iPhones store photos sideways and rotate them for display, so streaks can come out vertical.
-
 Tested on baseline, progressive, restart-marker and iPhone-style JPEGs and a photo (600 runs per target): with `jpeg-scan` libjpeg decoded all of them and macOS opened 598 (both misses were progressive), against 502 with `all`. `jpeg-tables` decoded every time without a warning.
 
 ## What files to glitch

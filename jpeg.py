@@ -17,6 +17,10 @@ SCAN = "scan"                        # pseudo segment: the compressed data after
 class JpegError(ValueError):
     pass
 
+# whether an FF followed by this byte, inside compressed data, ends the data
+def _ends_data(next_byte):
+    return next_byte != 0 and next_byte not in RESTARTS
+
 #
 # Returns the segments of the main image as (marker, start, end), where
 # start:end is the segment's content after its length field. Each SOS is
@@ -59,7 +63,7 @@ def _scan_end(data, pos):
         pos = data.find(b"\xff", pos)
         if pos == -1 or pos + 1 >= len(data):
             return len(data)  # truncated file: the data runs to the end
-        if data[pos + 1] != 0 and data[pos + 1] not in RESTARTS:
+        if _ends_data(data[pos + 1]):
             return pos
         pos += 2
 
@@ -78,7 +82,7 @@ def repair_scan(data, ranges):
     for start, end in ranges:
         pos = data.find(b"\xff", start, end)
         while pos != -1:
-            if pos + 1 >= end or (data[pos + 1] != 0 and data[pos + 1] not in RESTARTS):
+            if pos + 1 >= end or _ends_data(data[pos + 1]):
                 data[pos] = 0xFE
             pos = data.find(b"\xff", pos + 1, end)
 
@@ -100,7 +104,8 @@ def table_ranges(data):
 
 #
 # Quantization values of zero aren't allowed (decoders reject them), so any
-# zero the operations created becomes 1
+# zero the operations created becomes 1. The byte before each range is its
+# table's precision/id byte, which says whether values are 8 or 16 bits
 #
 def repair_tables(data, ranges):
     for start, end in ranges:
