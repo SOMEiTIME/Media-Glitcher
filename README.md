@@ -45,6 +45,7 @@ Options on the command line override a preset's `header_length` and `seed`. A pr
 ```
 python3 -m unittest discover -s tests
 ```
+`tests/cases.json` holds golden-output cases: a seeded `test-*` preset, a generated input, and the expected SHA-256 of the result. If glitch behaviour changes on purpose, regenerate the hashes with `python3 tests/test_golden.py --update` and review the diff. Hashes depend on Python's `random`, so they may need regenerating on a different Python version.
 
 ## Examples
 When used on images:
