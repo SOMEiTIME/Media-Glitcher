@@ -27,12 +27,13 @@ def operation_arg(op_type):
     metavar = ",".join(name.upper() for name, _, _ in params)
     def parse(text):
         parts = text.split(",")
+        usage = argparse.ArgumentTypeError("expected %s, got '%s'" % (metavar, text))
+        if len(parts) != len(params):
+            raise usage
         try:
-            if len(parts) != len(params):
-                raise ValueError
             op = {"type": op_type, **{name: kind(part) for (name, kind, _), part in zip(params, parts)}}
         except ValueError:
-            raise argparse.ArgumentTypeError("expected %s, got '%s'" % (metavar, text))
+            raise usage
         try:
             return presets.check_operation(op)
         except presets.PresetError as error:
@@ -132,11 +133,11 @@ def main(argv=None):
     if args.save_preset:
         # only store the header settings the operations actually use
         uses_lines = any(engine.is_line_operation(op) for op in operations)
-        uses_bytes = not all(engine.is_line_operation(op) for op in operations)
+        uses_bytes = any(not engine.is_line_operation(op) for op in operations)
         try:
-            path = presets.save(args.save_preset, operations, header_length if uses_lines else None, seed,
-                                args.description, overwrite=args.force,
-                                header_bytes=header_bytes if uses_bytes else None)
+            path = presets.save(args.save_preset, operations, seed=seed, description=args.description,
+                                header_length=header_length if uses_lines else None,
+                                header_bytes=header_bytes if uses_bytes else None, overwrite=args.force)
         except (OSError, presets.PresetError) as error:
             parser.exit(1, "error: cannot save preset: %s\n" % error)
         # printed even with -q, so a mistyped name is noticed straight away

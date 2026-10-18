@@ -13,8 +13,8 @@ import io, itertools, random
 import byte_ops
 from media import media
 
-DEFAULT_HEADER_LENGTH = 15   # lines line operations leave alone; 15 is good for video, 0 may suit images
-DEFAULT_HEADER_BYTES = 1024  # bytes byte operations leave alone; keeps most file signatures and basic headers
+DEFAULT_HEADER_LENGTH = 15   # protected lines in line mode; 15 is good for video, 0 may suit images
+DEFAULT_HEADER_BYTES = 1024  # protected bytes in byte mode; keeps most file signatures and basic headers
 
 # Each operation's parameters in command line order, as (name, type, smallest allowed value)
 OPERATIONS = {
@@ -25,13 +25,19 @@ OPERATIONS = {
     "bitflip": (("rate", float, 0),),
     "repeat": (("size", int, 1), ("every", int, 1)),
 }
-LINE_OPERATIONS = ("swap", "corrupt")
+LINE_FUNCTIONS = {"swap": media.glitch_random_swap, "corrupt": media.glitch_corrupt}
+BYTE_FUNCTIONS = {"byte-swap": byte_ops.byte_swap, "byte-corrupt": byte_ops.byte_corrupt,
+                  "bitflip": byte_ops.bitflip, "repeat": byte_ops.repeat}
 
 class GlitchError(ValueError):
     pass
 
 def is_line_operation(op):
-    return op["type"] in LINE_OPERATIONS
+    return op["type"] in LINE_FUNCTIONS
+
+# an operation's parameter values, in OPERATIONS order
+def _values(op):
+    return [op[name] for name, _, _ in OPERATIONS[op["type"]]]
 
 #
 # Glitches data (bytes) with a list of operations, e.g.
@@ -57,10 +63,7 @@ def _line_pass(data, operations, header_length, rng):
         raise GlitchError("file has only %d lines, fewer than the header length (%d)" % (len(lines), header_length))
     lines_media = media(lines, header_length, rng)
     for op in operations:
-        if op["type"] == "swap":
-            lines_media.glitch_random_swap(op["interval"], op["flavour"])
-        else:
-            lines_media.glitch_corrupt(op["interval"], op["flavour"])
+        LINE_FUNCTIONS[op["type"]](lines_media, *_values(op))
     return lines_media.text().encode("latin-1")
 
 def _byte_pass(data, operations, header_bytes, rng):
@@ -68,6 +71,5 @@ def _byte_pass(data, operations, header_bytes, rng):
         raise GlitchError("file has only %d bytes, not more than the byte header (%d)" % (len(data), header_bytes))
     data = bytearray(data)
     for op in operations:
-        function = getattr(byte_ops, op["type"].replace("-", "_"))
-        function(data, header_bytes, rng, *(op[name] for name, _, _ in OPERATIONS[op["type"]]))
+        BYTE_FUNCTIONS[op["type"]](data, header_bytes, rng, *_values(op))
     return bytes(data)

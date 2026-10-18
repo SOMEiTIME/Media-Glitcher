@@ -11,10 +11,10 @@ python3 media_glitcher.py --list-presets
 - Don't run it on files in `examples/`; the output path gets overwritten.
 
 ## Layout
-- `media_glitcher.py` — argparse CLI. One flag per operation type (generated from `engine.OPERATIONS`) plus `--preset`; operations run in the order given. Saved "good settings" are presets, not code.
-- `engine.py` — `glitch(data, operations, header_length, header_bytes, seed)`: runs operations on bytes with one seeded `random.Random`. `OPERATIONS` lists every type and its parameters; adding an operation means an entry there, a function in `byte_ops.py`, and help text in the CLI.
+- `media_glitcher.py` — argparse CLI; one flag per entry in `engine.OPERATIONS`, run in the order given. Saved "good settings" are presets, not code.
+- `engine.py` — `glitch(data, operations, ...)` runs operations with one seeded `random.Random`. A new operation needs an `OPERATIONS` entry, a function in `BYTE_FUNCTIONS` (or `LINE_FUNCTIONS`), and help text in the CLI.
 - `media.py` — line mode: `media` class splits the lines into header and body, exposes `glitch_random_swap(interval, flavour)` and `glitch_corrupt(interval, flavour)`, then `text()`.
-- `byte_ops.py` — byte mode operations; each edits a bytearray in place, skips the header bytes, keeps the length.
+- `byte_ops.py` — byte mode operations; each edits a bytearray in place and keeps the header and length.
 - `presets.py` — load/validate/save/apply presets; no CLI dependency, safe to import elsewhere.
 - `presets/` — preset JSON files. `default` is what runs with no operations.
 - `tests/` — `python3 -m unittest discover -s tests`.
@@ -22,7 +22,7 @@ python3 media_glitcher.py --list-presets
 
 ## Conventions and gotchas
 - `header_length` (lines, line mode) and `header_bytes` (byte mode) are kept untouched so the file stays openable. Glitching the header just breaks the file.
-- Line mode output must stay byte-identical; the golden tests check this. Consecutive line operations share one line split, and line operations must draw randomness in the same order as before.
+- Line mode output must stay byte-identical (the golden tests check), so keep its line splitting and random draws as they are.
 - Saved "good settings" are JSON files in `presets/` (format in `presets.py`) — keep them, and add new good ones rather than deleting. Use `--save-preset` to create one.
 - Files are read in text mode line by line, so output is meant to be lossy and unpredictable. Not a bug.
 - `.gitignore` ignores `__pycache__/`, `*.pyc` and `.DS_Store`.

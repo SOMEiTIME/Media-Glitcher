@@ -32,6 +32,9 @@ def is_int(value):
 def is_number(value):
     return is_int(value) or isinstance(value, float)
 
+# how each parameter type in engine.OPERATIONS is checked, and its name in errors
+TYPE_CHECKS = {int: (is_int, "an integer"), float: (is_number, "a number")}
+
 #
 # Checks one operation dict and returns a copy with its keys in the standard
 # order. Raises PresetError if the type is unknown or a parameter is wrong
@@ -42,12 +45,13 @@ def check_operation(op):
     params = engine.OPERATIONS[op["type"]]
     names = [name for name, _, _ in params]
     if set(op) != {"type", *names}:
-        raise PresetError("%s needs exactly %s" % (op["type"], ", ".join(names)))
+        raise PresetError("needs exactly %s" % ", ".join(names))
     for name, kind, minimum in params:
-        if not (is_int(op[name]) if kind is int else is_number(op[name])):
-            raise PresetError("%s: %s must be %s" % (op["type"], name, "an integer" if kind is int else "a number"))
+        check, type_name = TYPE_CHECKS[kind]
+        if not check(op[name]):
+            raise PresetError("%s must be %s" % (name, type_name))
         if minimum is not None and op[name] < minimum:
-            raise PresetError("%s: %s must be at least %s" % (op["type"], name, minimum))
+            raise PresetError("%s must be at least %s" % (name, minimum))
     return {"type": op["type"], **{name: op[name] for name in names}}
 
 #
@@ -68,7 +72,7 @@ def validate(data):
         try:
             checked.append(check_operation(op))
         except PresetError as error:
-            raise PresetError("operation %d: %s" % (number, error))
+            raise PresetError("operation %d (%s): %s" % (number, op.get("type") if isinstance(op, dict) else "?", error))
     for key in ("header_length", "header_bytes", "seed"):
         if data.get(key) is not None and not is_int(data[key]):
             raise PresetError("'%s' must be an integer" % key)
@@ -106,8 +110,8 @@ def load(name_or_path):
 # Writes a preset file and returns its path. Refuses to replace an existing
 # preset unless overwrite is set
 #
-def save(name_or_path, operations, header_length=None, seed=None, description="", overwrite=False,
-         header_bytes=None):
+def save(name_or_path, operations, *, header_length=None, header_bytes=None, seed=None, description="",
+         overwrite=False):
     data = {"description": description}
     for key, value in (("header_length", header_length), ("header_bytes", header_bytes), ("seed", seed)):
         if value is not None:
