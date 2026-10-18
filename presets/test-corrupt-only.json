@@ -1,0 +1,8 @@
+{
+  "description": "Test case: corrupt only, escalating, fixed seed",
+  "header_length": 15,
+  "seed": 3,
+  "operations": [
+    {"type": "corrupt", "interval": 50, "flavour": 8}
+  ]
+}

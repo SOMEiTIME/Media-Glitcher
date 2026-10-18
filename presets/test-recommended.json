@@ -1,0 +1,12 @@
+{
+  "description": "Test case: recommended settings with a fixed seed",
+  "header_length": 15,
+  "seed": 1,
+  "operations": [
+    {"type": "swap", "interval": 200, "flavour": 50},
+    {"type": "swap", "interval": 100, "flavour": 3},
+    {"type": "corrupt", "interval": 200, "flavour": 30},
+    {"type": "corrupt", "interval": 400, "flavour": 3},
+    {"type": "swap", "interval": 40, "flavour": 3}
+  ]
+}

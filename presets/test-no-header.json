@@ -1,0 +1,9 @@
+{
+  "description": "Test case: image-style run with no protected header, heavy corruption",
+  "header_length": 0,
+  "seed": 2,
+  "operations": [
+    {"type": "corrupt", "interval": 100, "flavour": 5},
+    {"type": "swap", "interval": 25, "flavour": 10}
+  ]
+}

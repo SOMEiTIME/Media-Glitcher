@@ -1,0 +1,23 @@
+[
+  {
+    "name": "recommended",
+    "preset": "test-recommended",
+    "input_size": 200000,
+    "input_seed": 0,
+    "sha256": "832212d11fc0b4b25d1727c0c3764b41d58639a2c101cb3f06d2fec38a0c68dc"
+  },
+  {
+    "name": "no-header",
+    "preset": "test-no-header",
+    "input_size": 100000,
+    "input_seed": 5,
+    "sha256": "ba1f98678b6b4c3f8dc8fd62e0e1f28be4ba5319a3aa412520d19a6bfb68f1f5"
+  },
+  {
+    "name": "corrupt-only",
+    "preset": "test-corrupt-only",
+    "input_size": 200000,
+    "input_seed": 0,
+    "sha256": "bc152702245a8f80ae9de64c37be310fce8abad1db70653150a489a8af8e1151"
+  }
+]
