@@ -2,7 +2,7 @@
 
 # Command line entry point for running the media class and glitching media
 
-import argparse, random
+import argparse, os, random
 import presets
 from media import media
 
@@ -63,6 +63,7 @@ def build_parser():
                         help="write this run's settings to a preset file; with no file arguments, "
                              "saves without glitching anything")
     parser.add_argument("--description", default="", help="description to store with --save-preset")
+    parser.add_argument("--force", action="store_true", help="let --save-preset replace an existing preset")
     parser.add_argument("--header-length", type=int, metavar="LINES",
                         help="lines at the start of the file left untouched; "
                              "15 is good for video, 0 may be fine for images (default: %d)" % DEFAULT_HEADER_LENGTH)
@@ -99,14 +100,18 @@ def main(argv=None):
             parser.error("input_file and output_file are required")
         if args.input_file == args.output_file:
             parser.error("input and output files must be different")
+    # checked before glitching, so a refused save doesn't leave a half-finished run
+    if args.save_preset and not args.force and os.path.exists(presets.resolve(args.save_preset)):
+        parser.error("preset %s already exists, add --force to replace it" % presets.resolve(args.save_preset))
 
     if args.save_preset:
         try:
-            path = presets.save(args.save_preset, operations, header_length, seed, args.description)
-        except OSError as error:
+            path = presets.save(args.save_preset, operations, header_length, seed, args.description,
+                                overwrite=args.force)
+        except (OSError, presets.PresetError) as error:
             parser.exit(1, "error: cannot save preset: %s\n" % error)
-        if not args.quiet:
-            print("Saved preset: ", path)
+        # printed even with -q, so a mistyped name is noticed straight away
+        print("Saved preset: ", path)
     if not glitching:
         return
 

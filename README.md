@@ -12,7 +12,7 @@ Options:
  * `--preset NAME_OR_FILE` adds the operations from a preset (see below).
  * `--header-length LINES` lines left untouched (default 15, good for video; images may be fine with 0).
  * `--seed N` makes the output reproducible.
- * `--save-preset NAME_OR_FILE [--description TEXT]` saves this run's settings as a preset.
+ * `--save-preset NAME_OR_FILE [--description TEXT]` saves this run's settings as a preset. It won't replace an existing preset unless you add `--force`, and it always prints where it saved, even with `-q`.
  * `--list-presets` lists the available presets.
  * `-q` / `--quiet` suppresses the file name output.
 

@@ -63,6 +63,18 @@ class CliTest(unittest.TestCase):
             media_glitcher.main([self.source, "--save-preset", saved, "--swap", "50,2"])
         self.assertFalse(os.path.exists(saved))
 
+    def test_save_refuses_to_overwrite_without_force(self):
+        saved = self.path("mine.json")
+        presets.save(saved, [("swap", 1, 1)], description="original")
+        with self.assertRaises(presets.PresetError):
+            presets.save(saved, [("swap", 2, 2)])
+        with self.assertRaises(SystemExit):
+            media_glitcher.main([self.source, self.path("o"), "--save-preset", saved, "--swap", "3,3", "-q"])
+        self.assertFalse(os.path.exists(self.path("o")))
+        self.assertEqual(presets.load(saved)["description"], "original")
+        media_glitcher.main(["--save-preset", saved, "--swap", "4,4", "--force", "-q"])
+        self.assertEqual(presets.load(saved)["operations"], [("swap", 4, 4)])
+
     def test_command_line_overrides_preset_settings(self):
         saved = self.path("p.json")
         presets.save(saved, [("swap", 50, 2)], header_length=0, seed=1)

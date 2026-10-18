@@ -84,7 +84,11 @@ def load(name_or_path):
     except PresetError as error:
         raise PresetError("%s: %s" % (path, error))
 
-def save(name_or_path, operations, header_length=None, seed=None, description=""):
+#
+# Writes a preset file and returns its path. Refuses to replace an existing
+# preset unless overwrite is set
+#
+def save(name_or_path, operations, header_length=None, seed=None, description="", overwrite=False):
     data = {"description": description}
     if header_length is not None:
         data["header_length"] = header_length
@@ -93,6 +97,8 @@ def save(name_or_path, operations, header_length=None, seed=None, description=""
     data["operations"] = [{"type": t, "interval": i, "flavour": f} for t, i, f in operations]
     validate(data)
     path = resolve(name_or_path)
+    if os.path.exists(path) and not overwrite:
+        raise PresetError("preset %s already exists" % path)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     # same layout as the bundled presets: one operation per line, easy to edit by hand
     settings = ",\n".join("  %s: %s" % (json.dumps(k), json.dumps(v)) for k, v in data.items() if k != "operations")
