@@ -24,5 +24,6 @@ python3 media_glitcher.py input_file output_file
 ## Git workflow
 - Never commit directly to `master`. Before making any commit, create a branch named for the work (e.g. `feature/add-glitch-mode`, `fix/header-parsing`, `docs/update-notes`) and commit there.
 - If you're on `master` when asked to commit, switch to a new branch first.
-- Keep commits small and focused, with a short imperative message. Don't push or open a PR unless asked.
+- Keep commits small and focused, with a short imperative message.
+- Pushing to a branch Claude created is fine without asking. Ask before force-pushing, pushing to any other branch (including `master`), or opening a PR.
 - Stage specific files (not `git add -A`), since stray files like `.DS_Store` are lying around.
