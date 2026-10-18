@@ -1,0 +1,9 @@
+{
+  "description": "Test case: corrupt a JPEG's quantization tables, fixed seed",
+  "target": "jpeg-tables",
+  "seed": 6,
+  "operations": [
+    {"type": "byte-corrupt", "every": 8},
+    {"type": "bitflip", "rate": 0.05}
+  ]
+}

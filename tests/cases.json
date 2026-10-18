@@ -26,5 +26,17 @@
     "input_size": 200000,
     "input_seed": 0,
     "sha256": "14c37a9d72852e5119d83194af5e34e265386b52f01feed3784542bfd82b6200"
+  },
+  {
+    "name": "jpeg-scan",
+    "preset": "test-jpeg-scan",
+    "input_file": "progressive.jpg",
+    "sha256": "08e913d19aa25d2fd9dc97cab796b366f8f3de10bbe5104638a598f53cc8ac91"
+  },
+  {
+    "name": "jpeg-tables",
+    "preset": "test-jpeg-tables",
+    "input_file": "baseline.jpg",
+    "sha256": "74e74f13d64de5d971711da0333312a6be2d975b4bde33814631488c37fd6073"
   }
 ]

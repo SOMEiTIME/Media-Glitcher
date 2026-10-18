@@ -1,0 +1,8 @@
+{
+  "description": "JPEG image data only: horizontal streaks and shifted rows; the file keeps its structure",
+  "target": "jpeg-scan",
+  "operations": [
+    {"type": "byte-swap", "size": 64, "every": 20000},
+    {"type": "bitflip", "rate": 0.0001}
+  ]
+}
