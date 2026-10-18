@@ -34,4 +34,5 @@ python3 media_glitcher.py --list-presets
 - Keep commits small and focused, with a short imperative message.
 - Pushing to a branch Claude created is fine without asking. Ask before force-pushing or pushing to any other branch (including `master`).
 - Open a PR without asking once the work on a branch Claude created is done (tests pass, docs updated). For any other branch, ask first. Don't merge PRs.
+- Before opening a PR, do a final pass over the whole diff against `master`: is it readable, well designed, and no more verbose than it needs to be? Fix what you find, without changing behaviour, then re-run the tests (`python3 -m unittest discover -s tests`) and note what the pass changed in the PR description.
 - Stage specific files (not `git add -A`), since stray files like `.DS_Store` are lying around.
