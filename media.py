@@ -3,20 +3,21 @@
 import random
 
 #
-# This class reads in the given file, 
+# This class takes the lines of a file,
 # then perform glitching operations as desired,
-# and then can print the new file to an output file
+# and then can return the new file as text
 #
 class media:
     #
     # Initializer method
-    # Requires two open file pointers, and the length of the header of the format
+    # Requires the file's lines, the length of the header of the format,
+    # and a random number generator (the random module, or a seeded random.Random)
     #
-    def __init__(self, input_file, output_file, header_length):
+    def __init__(self, lines, header_length, rng=random):
         self.__header = []
         self.__body = []
-        self.__output_file = output_file
-        for line in input_file:
+        self.__rng = rng
+        for line in lines:
             self.__body.append(line)
         for num in range(header_length):
             self.__header.append(self.__body.pop(0))
@@ -65,7 +66,7 @@ class media:
         for num in range(0, len(self.__body)):
             if counter == interval:
                 place1 = num
-                place2 = num-(1+random.randint(0, 2 + flavour % 10)) #introduced randomness here for more organic looking results
+                place2 = num-(1+self.__rng.randint(0, 2 + flavour % 10)) #introduced randomness here for more organic looking results
                 self.__swap_at(place1,place2)
                 counter = flavour
             else:
@@ -83,7 +84,7 @@ class media:
             if counter == interval:
                 for i in range(corruption):
                     place1 = num-i
-                    place2 = num-(i+1+random.randint(0, 5 + corruption))
+                    place2 = num-(i+1+self.__rng.randint(0, 5 + corruption))
                     self.__swap_at(place1,place2)    
                 counter = 0
                 corruption = corruption + 1
@@ -92,9 +93,7 @@ class media:
         return  
 
     #
-    # Prints the glitched version of the file to a new file
+    # Returns the glitched version of the file as text
     #
-    def print_to_new_file(self):
-        self.__output_file.writelines(self.__header)
-        self.__output_file.writelines(self.__body)
-        return
+    def text(self):
+        return "".join(self.__header + self.__body)

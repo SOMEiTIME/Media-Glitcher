@@ -1,0 +1,8 @@
+{
+  "description": "Byte mode starting point: a few chunk swaps and rare bit flips; strong on JPEG, barely visible on uncompressed images",
+  "header_bytes": 1024,
+  "operations": [
+    {"type": "byte-swap", "size": 64, "every": 20000},
+    {"type": "bitflip", "rate": 0.00002}
+  ]
+}

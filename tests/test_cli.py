@@ -1,7 +1,10 @@
-import os, random, sys, tempfile, unittest
+import json, os, random, sys, tempfile, unittest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import media_glitcher, presets
+import engine, media_glitcher, presets
+
+def swap(interval, flavour):
+    return {"type": "swap", "interval": interval, "flavour": flavour}
 
 class CliTest(unittest.TestCase):
     def setUp(self):
@@ -32,7 +35,8 @@ class CliTest(unittest.TestCase):
         parts = []
         for name in ("swaps-sparse", "swaps-frequent", "corrupt-escalating"):
             parts += presets.load(name)["operations"]
-        self.assertEqual(sorted(parts), sorted(presets.load("recommended")["operations"]))
+        key = lambda op: json.dumps(op, sort_keys=True)
+        self.assertEqual(sorted(parts, key=key), sorted(presets.load("recommended")["operations"], key=key))
 
     def test_seeded_run_is_reproducible(self):
         a = self.run_cli("a", "--preset", "recommended", "--seed", "7")
@@ -52,7 +56,7 @@ class CliTest(unittest.TestCase):
         media_glitcher.main(["--save-preset", saved, "--swap", "50,2", "--corrupt", "300,5",
                              "--seed", "9", "--header-length", "0", "--description", "test", "-q"])
         loaded = presets.load(saved)
-        self.assertEqual(loaded["operations"], [("swap", 50, 2), ("corrupt", 300, 5)])
+        self.assertEqual(loaded["operations"], [swap(50, 2), {"type": "corrupt", "interval": 300, "flavour": 5}])
         self.assertEqual((loaded["seed"], loaded["header_length"], loaded["description"]), (9, 0, "test"))
         self.assertEqual(self.run_cli("a", "--preset", saved), self.run_cli("b", "--swap", "50,2",
                          "--corrupt", "300,5", "--seed", "9", "--header-length", "0"))
@@ -65,19 +69,19 @@ class CliTest(unittest.TestCase):
 
     def test_save_refuses_to_overwrite_without_force(self):
         saved = self.path("mine.json")
-        presets.save(saved, [("swap", 1, 1)], description="original")
+        presets.save(saved, [swap(1, 1)], description="original")
         with self.assertRaises(presets.PresetError):
-            presets.save(saved, [("swap", 2, 2)])
+            presets.save(saved, [swap(2, 2)])
         with self.assertRaises(SystemExit):
             media_glitcher.main([self.source, self.path("o"), "--save-preset", saved, "--swap", "3,3", "-q"])
         self.assertFalse(os.path.exists(self.path("o")))
         self.assertEqual(presets.load(saved)["description"], "original")
         media_glitcher.main(["--save-preset", saved, "--swap", "4,4", "--force", "-q"])
-        self.assertEqual(presets.load(saved)["operations"], [("swap", 4, 4)])
+        self.assertEqual(presets.load(saved)["operations"], [swap(4, 4)])
 
     def test_command_line_overrides_preset_settings(self):
         saved = self.path("p.json")
-        presets.save(saved, [("swap", 50, 2)], header_length=0, seed=1)
+        presets.save(saved, [swap(50, 2)], header_length=0, seed=1)
         self.assertEqual(self.run_cli("a", "--preset", saved, "--seed", "2"),
                          self.run_cli("b", "--swap", "50,2", "--seed", "2", "--header-length", "0"))
 
@@ -93,6 +97,53 @@ class CliTest(unittest.TestCase):
             f.write("{not json")
         with self.assertRaises(SystemExit):
             media_glitcher.main([self.source, self.path("o"), "--preset", broken])
+
+class ByteModeTest(unittest.TestCase):
+    def setUp(self):
+        rng = random.Random(1)
+        self.data = bytes(rng.randrange(256) for _ in range(50000))
+
+    def test_byte_operations_keep_length_and_header(self):
+        for op in ({"type": "byte-swap", "size": 64, "every": 1000}, {"type": "byte-corrupt", "every": 100},
+                   {"type": "bitflip", "rate": 0.001}, {"type": "repeat", "size": 32, "every": 2000}):
+            with self.subTest(op=op["type"]):
+                out = engine.glitch(self.data, [op], header_bytes=4096, seed=3)
+                self.assertEqual(len(out), len(self.data))
+                self.assertEqual(out[:4096], self.data[:4096])
+                self.assertNotEqual(out, self.data)
+
+    def test_bitflip_flips_the_requested_share_of_bits(self):
+        out = engine.glitch(self.data, [{"type": "bitflip", "rate": 0.001}], header_bytes=0, seed=4)
+        flipped = sum(bin(a ^ b).count("1") for a, b in zip(self.data, out))
+        # 400 flips requested; a bit picked twice flips back, so allow a little less
+        self.assertTrue(380 <= flipped <= 400, flipped)
+
+    def test_seed_reproduces_and_modes_mix(self):
+        ops = [swap(100, 3), {"type": "byte-swap", "size": 16, "every": 500}, swap(40, 3)]
+        self.assertEqual(engine.glitch(self.data, ops, seed=5), engine.glitch(self.data, ops, seed=5))
+        self.assertNotEqual(engine.glitch(self.data, ops, seed=5), engine.glitch(self.data, ops, seed=6))
+
+    def test_file_smaller_than_byte_header_is_an_error(self):
+        with self.assertRaises(engine.GlitchError):
+            engine.glitch(self.data[:100], [{"type": "byte-corrupt", "every": 10}], header_bytes=100)
+
+    def test_byte_flags_and_preset_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source, out, saved = (os.path.join(directory, name) for name in ("in", "out", "p.json"))
+            with open(source, "wb") as f:
+                f.write(self.data)
+            media_glitcher.main([source, out, "-q", "--byte-swap", "64,1000", "--bitflip", "0.0005",
+                                 "--header-bytes", "2048", "--seed", "1", "--save-preset", saved])
+            loaded = presets.load(saved)
+            self.assertEqual((loaded["header_bytes"], "header_length" in loaded), (2048, False))
+            with open(out, "rb") as f:
+                expected = engine.glitch(self.data, loaded["operations"], header_bytes=2048, seed=1)
+                self.assertEqual(f.read(), expected)
+
+    def test_bad_byte_flags_rejected(self):
+        for args in (["--byte-swap", "64"], ["--byte-swap", "0,10"], ["--bitflip", "x"], ["--byte-corrupt", "1.5"]):
+            with self.subTest(args=args), self.assertRaises(SystemExit):
+                media_glitcher.main(["in", "out"] + args)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,9 @@
+{
+  "description": "Byte mode for uncompressed images (BMP, uncompressed TIFF): shifted bands plus speckle; tried on a 7 MB BMP",
+  "header_bytes": 1024,
+  "operations": [
+    {"type": "byte-swap", "size": 20000, "every": 250000},
+    {"type": "repeat", "size": 30000, "every": 500000},
+    {"type": "bitflip", "rate": 0.0005}
+  ]
+}
