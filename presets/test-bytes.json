@@ -1,0 +1,13 @@
+{
+  "description": "Test case: every byte operation, with line operations mixed in, fixed seed",
+  "header_length": 15,
+  "header_bytes": 2048,
+  "seed": 4,
+  "operations": [
+    {"type": "byte-swap", "size": 64, "every": 3000},
+    {"type": "swap", "interval": 100, "flavour": 3},
+    {"type": "byte-corrupt", "every": 5000},
+    {"type": "bitflip", "rate": 0.0001},
+    {"type": "repeat", "size": 128, "every": 20000}
+  ]
+}

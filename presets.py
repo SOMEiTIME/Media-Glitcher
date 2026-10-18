@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 
 import json, os
+import engine
 
 # Presets are JSON files describing a whole glitch run:
 #
 #   {
 #     "description": "free text, optional",
-#     "header_length": 15,          optional
+#     "header_length": 15,          optional, lines left alone by line operations
+#     "header_bytes": 1024,         optional, bytes left alone by byte operations
 #     "seed": 42,                   optional, makes the output reproducible
-#     "operations": [               run in order
+#     "operations": [               run in order, see engine.OPERATIONS for every type
 #       {"type": "swap", "interval": 200, "flavour": 50},
-#       {"type": "corrupt", "interval": 200, "flavour": 30}
+#       {"type": "byte-swap", "size": 64, "every": 5000}
 #     ]
 #   }
 #
 # This module has no dependency on the CLI so other programs and tests can use it.
 
 PRESET_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "presets")
-OPERATION_TYPES = ("swap", "corrupt")
-KNOWN_FIELDS = ("description", "header_length", "seed", "operations")
+KNOWN_FIELDS = ("description", "header_length", "header_bytes", "seed", "operations")
 
 class PresetError(ValueError):
     pass
@@ -27,9 +28,35 @@ class PresetError(ValueError):
 def is_int(value):
     return isinstance(value, int) and not isinstance(value, bool)
 
+# True for numbers a float parameter accepts
+def is_number(value):
+    return is_int(value) or isinstance(value, float)
+
+# how each parameter type in engine.OPERATIONS is checked, and its name in errors
+TYPE_CHECKS = {int: (is_int, "an integer"), float: (is_number, "a number")}
+
 #
-# Checks a preset dict and returns it with operations normalised to
-# (type, interval, flavour) tuples. Raises PresetError on anything malformed
+# Checks one operation dict and returns a copy with its keys in the standard
+# order. Raises PresetError if the type is unknown or a parameter is wrong
+#
+def check_operation(op):
+    if not isinstance(op, dict) or op.get("type") not in engine.OPERATIONS:
+        raise PresetError("type must be one of %s" % ", ".join(engine.OPERATIONS))
+    params = engine.OPERATIONS[op["type"]]
+    names = [name for name, _, _ in params]
+    if set(op) != {"type", *names}:
+        raise PresetError("needs exactly %s" % ", ".join(names))
+    for name, kind, minimum in params:
+        check, type_name = TYPE_CHECKS[kind]
+        if not check(op[name]):
+            raise PresetError("%s must be %s" % (name, type_name))
+        if minimum is not None and op[name] < minimum:
+            raise PresetError("%s must be at least %s" % (name, minimum))
+    return {"type": op["type"], **{name: op[name] for name in names}}
+
+#
+# Checks a preset dict and returns it with its operations normalised.
+# Raises PresetError on anything malformed
 #
 def validate(data):
     if not isinstance(data, dict):
@@ -42,21 +69,16 @@ def validate(data):
         raise PresetError("'operations' must be a non-empty list")
     checked = []
     for number, op in enumerate(operations, 1):
-        if not isinstance(op, dict) or set(op) != {"type", "interval", "flavour"}:
-            raise PresetError("operation %d needs exactly type, interval and flavour" % number)
-        if op["type"] not in OPERATION_TYPES:
-            raise PresetError("operation %d: type must be one of %s" % (number, ", ".join(OPERATION_TYPES)))
-        for key in ("interval", "flavour"):
-            if not is_int(op[key]):
-                raise PresetError("operation %d: %s must be an integer" % (number, key))
-        if op["interval"] < 0:
-            raise PresetError("operation %d: interval must not be negative" % number)
-        checked.append((op["type"], op["interval"], op["flavour"]))
-    for key in ("header_length", "seed"):
+        try:
+            checked.append(check_operation(op))
+        except PresetError as error:
+            raise PresetError("operation %d (%s): %s" % (number, op.get("type") if isinstance(op, dict) else "?", error))
+    for key in ("header_length", "header_bytes", "seed"):
         if data.get(key) is not None and not is_int(data[key]):
             raise PresetError("'%s' must be an integer" % key)
-    if (data.get("header_length") or 0) < 0:
-        raise PresetError("'header_length' must not be negative")
+    for key in ("header_length", "header_bytes"):
+        if (data.get(key) or 0) < 0:
+            raise PresetError("'%s' must not be negative" % key)
     if not isinstance(data.get("description", ""), str):
         raise PresetError("'description' must be a string")
     return dict(data, operations=checked)
@@ -88,14 +110,14 @@ def load(name_or_path):
 # Writes a preset file and returns its path. Refuses to replace an existing
 # preset unless overwrite is set
 #
-def save(name_or_path, operations, header_length=None, seed=None, description="", overwrite=False):
+def save(name_or_path, operations, *, header_length=None, header_bytes=None, seed=None, description="",
+         overwrite=False):
     data = {"description": description}
-    if header_length is not None:
-        data["header_length"] = header_length
-    if seed is not None:
-        data["seed"] = seed
-    data["operations"] = [{"type": t, "interval": i, "flavour": f} for t, i, f in operations]
-    validate(data)
+    for key, value in (("header_length", header_length), ("header_bytes", header_bytes), ("seed", seed)):
+        if value is not None:
+            data[key] = value
+    data["operations"] = list(operations)
+    data = validate(data)
     path = resolve(name_or_path)
     if os.path.exists(path) and not overwrite:
         raise PresetError("preset %s already exists" % path)
@@ -119,13 +141,3 @@ def list_presets():
                 except PresetError as error:
                     found.append((name, "(invalid: %s)" % error))
     return found
-
-#
-# Runs the operations on a media object, in order
-#
-def apply(media_object, operations):
-    for kind, interval, flavour in operations:
-        if kind == "swap":
-            media_object.glitch_random_swap(interval, flavour)
-        else:
-            media_object.glitch_corrupt(interval, flavour)

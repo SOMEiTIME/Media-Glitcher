@@ -19,5 +19,12 @@
     "input_size": 200000,
     "input_seed": 0,
     "sha256": "bc152702245a8f80ae9de64c37be310fce8abad1db70653150a489a8af8e1151"
+  },
+  {
+    "name": "bytes",
+    "preset": "test-bytes",
+    "input_size": 200000,
+    "input_seed": 0,
+    "sha256": "14c37a9d72852e5119d83194af5e34e265386b52f01feed3784542bfd82b6200"
   }
 ]
