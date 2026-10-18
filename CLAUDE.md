@@ -37,3 +37,11 @@ python3 media_glitcher.py --list-presets
 - Open a PR without asking once the work on a branch Claude created is done (tests pass, docs updated). For any other branch, ask first. Don't merge PRs.
 - Before opening a PR, do a final pass over the whole diff against `master`: is it readable, well designed, and no more verbose than it needs to be? Fix what you find, without changing behaviour, then re-run the tests (`python3 -m unittest discover -s tests`) and note what the pass changed in the PR description.
 - Stage specific files (not `git add -A`), since stray files like `.DS_Store` are lying around.
+
+<!-- claude-harness:start -->
+## Guardrails
+- Done means `.claude/verify.sh` passes. A Stop hook runs it when you finish a turn with work on the branch and sends you back to fix failures. If it can't pass (missing tool, flaky test), tell the user why instead of weakening the script.
+- `.claude/hooks/block-dangerous.sh` blocks force pushes, pushes to main/master, deleting main/master, `git reset --hard origin/...`, recursive `rm` outside the repo, reading `.env`/key/credential files, and `curl | sh`. If you need something it blocks, ask the user. Don't work around it or edit the hooks or `.claude/settings.json` to get past it.
+- Always work on a branch and finish with a PR; never commit or push to main/master. Commit in small checkpoints as you go.
+- Ask before adding a new dependency.
+<!-- claude-harness:end -->
