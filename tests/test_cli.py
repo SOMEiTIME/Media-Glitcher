@@ -22,11 +22,10 @@ class CliTest(unittest.TestCase):
 
     def test_bundled_presets_are_valid(self):
         found = presets.list_presets()
-        builtin = {name for group, name, _ in found if group == "builtin"}
-        self.assertEqual(builtin, {"default", "recommended", "classic",
-                                   "swaps-frequent", "swaps-sparse", "corrupt-escalating"})
-        for group, name, description in found:
-            presets.load(group + "/" + name)
+        self.assertEqual({name for name, _ in found}, {"default", "recommended", "classic",
+                         "swaps-frequent", "swaps-sparse", "corrupt-escalating"})
+        for name, description in found:
+            presets.load(name)
             self.assertFalse(description.startswith("(invalid"), name)
 
     def test_recommended_parts_cover_recommended(self):
@@ -34,20 +33,6 @@ class CliTest(unittest.TestCase):
         for name in ("swaps-sparse", "swaps-frequent", "corrupt-escalating"):
             parts += presets.load(name)["operations"]
         self.assertEqual(sorted(parts), sorted(presets.load("recommended")["operations"]))
-
-    def test_groups_save_and_lookup(self):
-        original = presets.PRESET_DIR
-        presets.PRESET_DIR = self.path("presets")
-        self.addCleanup(setattr, presets, "PRESET_DIR", original)
-        for group in ("builtin", "user"):
-            os.makedirs(self.path("presets/" + group))
-        presets.save("builtin/shared", [("swap", 1, 1)], description="builtin one")
-        # a bare name saves to the user group and shadows the builtin of the same name
-        saved = presets.save("shared", [("corrupt", 2, 2)], description="user one")
-        self.assertEqual(saved, self.path("presets/user/shared.json"))
-        self.assertEqual(presets.load("shared")["description"], "user one")
-        self.assertEqual(presets.load("builtin/shared")["description"], "builtin one")
-        self.assertEqual([g for g, n, _ in presets.list_presets()], ["user", "builtin"])
 
     def test_seeded_run_is_reproducible(self):
         a = self.run_cli("a", "--preset", "recommended", "--seed", "7")
