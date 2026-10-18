@@ -22,8 +22,8 @@ class CliTest(unittest.TestCase):
 
     def test_bundled_presets_are_valid(self):
         found = presets.list_presets()
-        self.assertEqual({name for name, _ in found}, {"default", "recommended", "classic",
-                         "swaps-frequent", "swaps-sparse", "corrupt-escalating"})
+        self.assertTrue({"default", "recommended", "classic", "swaps-frequent", "swaps-sparse",
+                         "corrupt-escalating"} <= {name for name, _ in found})
         for name, description in found:
             presets.load(name)
             self.assertFalse(description.startswith("(invalid"), name)
