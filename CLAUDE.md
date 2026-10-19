@@ -31,6 +31,9 @@ python3 media_glitcher.py --list-presets
 - `.gitignore` ignores `__pycache__/`, `*.pyc` and `.DS_Store`.
 - Style: comment blocks above each method, double-underscore private helpers.
 
+## Public repo
+This repo is public. Don't commit personal details (full name, email, local paths, device names), other people's contact info, or secrets. Ask first if a task needs one.
+
 ## Git workflow
 - Never commit directly to `master`. Before making any commit, create a branch named for the work (e.g. `feature/add-glitch-mode`, `fix/header-parsing`, `docs/update-notes`) and commit there.
 - If you're on `master` when asked to commit, switch to a new branch first.
