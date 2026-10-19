@@ -1,0 +1,8 @@
+{
+  "description": "WAV/AIFF samples only: repeated and swapped slices; sizes are multiples of 24 bytes so samples stay aligned",
+  "target": "auto",
+  "operations": [
+    {"type": "repeat", "size": 4800, "every": 48000},
+    {"type": "byte-swap", "size": 2400, "every": 30000}
+  ]
+}

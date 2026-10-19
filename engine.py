@@ -13,7 +13,7 @@
 # This module has no dependency on the CLI so other programs and tests can use it.
 
 import io, itertools, random
-import byte_ops, jpeg
+import byte_ops, jpeg, uncompressed
 from media import media
 
 DEFAULT_HEADER_LENGTH = 15   # protected lines in line mode; 15 is good for video, 0 may suit images
@@ -37,8 +37,12 @@ BYTE_FUNCTIONS = {"byte-swap": byte_ops.byte_swap, "byte-corrupt": byte_ops.byte
 FORMAT_TARGETS = {
     "jpeg-scan": (jpeg.scan_ranges, jpeg.repair_scan),
     "jpeg-tables": (jpeg.table_ranges, jpeg.repair_tables),
+    "bmp-pixels": (uncompressed.bmp_pixels, None),
+    "ppm-pixels": (uncompressed.ppm_pixels, None),
+    "wav-samples": (uncompressed.wav_samples, None),
+    "aiff-samples": (uncompressed.aiff_samples, None),
 }
-TARGETS = ("all", *FORMAT_TARGETS)
+TARGETS = ("all", "auto", *FORMAT_TARGETS)
 DEFAULT_TARGET = "all"
 
 class GlitchError(ValueError):
@@ -80,8 +84,24 @@ def _line_pass(data, operations, header_length, rng):
         LINE_FUNCTIONS[op["type"]](lines_media, *_values(op))
     return lines_media.text().encode("latin-1")
 
+# the format target "auto" picks from the file's first bytes; "all" if it's none of them
+def detect_target(data):
+    if data[:2] == b"\xff\xd8":
+        return "jpeg-scan"
+    if data[:2] == b"BM":
+        return "bmp-pixels"
+    if data[:2] in (b"P4", b"P5", b"P6"):
+        return "ppm-pixels"
+    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return "wav-samples"
+    if data[:4] == b"FORM" and data[8:12] in (b"AIFF", b"AIFC"):
+        return "aiff-samples"
+    return "all"
+
 # the (start, end) ranges byte operations may change, and the repair step to run after
 def _target(data, target, header_bytes):
+    if target == "auto":
+        target = detect_target(data)
     if target == "all":
         if len(data) <= header_bytes:
             raise GlitchError("file has only %d bytes, not more than the byte header (%d)" % (len(data), header_bytes))
@@ -89,7 +109,7 @@ def _target(data, target, header_bytes):
     find, repair = FORMAT_TARGETS[target]
     try:
         ranges = find(data)
-    except jpeg.JpegError as error:
+    except (jpeg.JpegError, uncompressed.FormatError) as error:
         raise GlitchError("can't use target %s: %s" % (target, error))
     if not ranges:
         raise GlitchError("can't use target %s: nothing to glitch in this file" % target)

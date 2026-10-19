@@ -15,10 +15,11 @@ python3 media_glitcher.py --list-presets
 - `engine.py` — `glitch(data, operations, ...)` runs operations with one seeded `random.Random`. A new operation needs an `OPERATIONS` entry, a function in `BYTE_FUNCTIONS` (or `LINE_FUNCTIONS`), and help text in the CLI.
 - `media.py` — line mode: `media` class splits the lines into header and body, exposes `glitch_random_swap(interval, flavour)` and `glitch_corrupt(interval, flavour)`, then `text()`.
 - `byte_ops.py` — byte mode operations; each edits a bytearray in place and keeps the header and length.
-- `jpeg.py` — JPEG marker parser for the `jpeg-scan`/`jpeg-tables` targets (`engine.TARGETS`). A target gives the byte ranges to glitch and a repair step afterwards (no stray FF in scan data, no zero quantization values).
+- `jpeg.py` — JPEG marker parser for the `jpeg-scan`/`jpeg-tables` targets (`engine.FORMAT_TARGETS`). A target gives the byte ranges to glitch and a repair step afterwards (no stray FF in scan data, no zero quantization values).
+- `uncompressed.py` — BMP, PPM/PGM/PBM, WAV and AIFF targets: find the raw data from the header, no repair needed. `engine.detect_target()` picks a target for `--target auto`. Don't use the stdlib `aifc` module (removed in Python 3.13, which a-Shell runs).
 - `presets.py` — load/validate/save/apply presets; no CLI dependency, safe to import elsewhere.
 - `presets/` — preset JSON files. `default` is what runs with no operations.
-- `tests/` — `python3 -m unittest discover -s tests`. `tests/fixtures/` holds small JPEGs made with `cjpeg` (baseline, progressive, restart markers).
+- `tests/` — `python3 -m unittest discover -s tests`. `tests/fixtures/` holds small JPEGs made with `cjpeg` (baseline, progressive, restart markers), a BMP made with Pillow and a WAV made with `wave`.
 - `examples/` — sample outputs referenced by the README.
 
 ## Conventions and gotchas

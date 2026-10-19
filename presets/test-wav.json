@@ -1,0 +1,10 @@
+{
+  "description": "Test case: auto target on a WAV, frame-aligned sizes, fixed seed",
+  "target": "auto",
+  "seed": 8,
+  "operations": [
+    {"type": "repeat", "size": 240, "every": 1600},
+    {"type": "byte-swap", "size": 96, "every": 900},
+    {"type": "bitflip", "rate": 0.001}
+  ]
+}
