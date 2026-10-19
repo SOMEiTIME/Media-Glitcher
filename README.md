@@ -1,5 +1,5 @@
 # Media-Glitcher
-for python 3
+Glitches images, video and audio by swapping and corrupting the raw file data. Python 3, stdlib only.
 
 ## Usage
 ```
@@ -58,7 +58,7 @@ python3 media_glitcher.py in.avi out.avi --iframe-drop 1
 Anything that isn't an MPEG-4 part 2 AVI (H.264 MP4s, for instance) is refused with an error. Convert first, e.g. `ffmpeg -i in.mp4 -c:v mpeg4 -bf 0 in.avi`. Dropping a keyframe in H.264 is a different job and isn't supported.
 
 ## JPEG targets
-Plain byte mode can hit a JPEG's headers, tables and metadata as easily as its pixels, which is why it sometimes breaks the file. The JPEG targets read the file's structure and only change one part:
+Plain byte mode hits a JPEG's headers and metadata as easily as its pixels, which can break the file. The JPEG targets read the structure and change only one part:
 
  * `--target jpeg-scan` changes only the compressed image data, never leaving a byte that would end it early. Headers, tables, metadata (including the thumbnail) and the extra images iPhones append stay untouched. You get streaks and shifted rows, and the file keeps its structure. Try `--preset jpeg-streaks`.
  * `--target jpeg-tables` changes only the quantization tables, which set how coarsely detail is stored. You get a texture over the whole image, from a fine weave (`--preset jpeg-texture`) to bold block patterns (`--preset jpeg-texture-heavy`). The tables are tiny, so use small spacings like `--byte-corrupt 16` or high rates like `--bitflip 0.1`.
@@ -92,8 +92,7 @@ How a format stores its data decides how it reacts. "Tested" means glitched with
 | HEIC (iPhone photos) | Not supported. Set the camera to "Most Compatible" or export as JPEG. | Not planned |
 
 ## Presets
-A preset is a JSON file for a whole run: the operations in order, plus optional `header_length`, `header_bytes`, `target`, `seed` and `description`.
-A bare name is looked up in `presets/`; anything with a `/` or `.json` is treated as a path.
+A preset is a JSON file for a whole run: the operations in order, plus optional `header_length`, `header_bytes`, `target`, `seed` and `description`. A bare name is looked up in `presets/`; anything with a `/` or `.json` is treated as a path.
 ```json
 {
   "description": "Heavy glitching for video",
@@ -112,6 +111,7 @@ python3 media_glitcher.py in.avi out.avi --preset recommended
 python3 media_glitcher.py in.avi out.avi --swap 200,50 --corrupt 200,30 --save-preset mine
 ```
 Options on the command line override a preset's `header_length`, `header_bytes`, `target` and `seed`. A preset with a `seed` gives identical output every run, which makes presets usable as test cases.
+
 `presets.py` and `engine.py` have no CLI dependencies, so other programs can load presets with `presets.load()` and run them with `engine.glitch(data, operations, ...)`.
 
 `--list-presets` lists them. `recommended` holds the settings that have worked well on their own and together (five operations). It's also split into three smaller presets, `swaps-sparse`, `swaps-frequent` and `corrupt-escalating`, so you can use one or a few at a time, e.g. `--preset swaps-frequent --preset corrupt-escalating`. Using all three runs the same operations as `recommended`, but in a different order, so the result differs.
