@@ -6,94 +6,82 @@ for python 3
 python3 media_glitcher.py input_file output_file [options]
 ```
 
-There are three modes, and you can mix them in one run:
+Three modes, mix them in one run:
 
- * **Line mode** (the original): splits the file wherever a newline byte happens to be, then swaps "lines". Lines in binary data have random lengths, so results are unpredictable, which is part of the charm.
- * **Byte mode**: works on exact byte positions and sizes, so the amount and spacing of damage is under your control.
- * **Frame mode**: datamoshes MPEG-4 AVI video by removing or repeating whole frames (see below).
+ * **Line mode**: swaps and corrupts "lines" (split at newline bytes). Random lengths, so unpredictable results.
+ * **Byte mode**: exact byte positions and sizes, so you control the damage.
+ * **Frame mode**: datamoshes MPEG-4 AVI video.
 
-Line mode options:
+Operations run in the order given, and can be repeated. With none given, the `default` preset runs. `-h` has the details.
 
- * `--swap INTERVAL,FLAVOUR` / `--corrupt INTERVAL,FLAVOUR` add a line operation.
- * `--header-length LINES` lines left untouched (default 15, good for video; images may be fine with 0).
+### Line mode
+ * `--swap INTERVAL,FLAVOUR`
+ * `--corrupt INTERVAL,FLAVOUR`
+ * `--header-length LINES` lines left alone (default 15, good for video, images may be fine with 0)
 
-Byte mode options:
+### Byte mode
+ * `--byte-swap SIZE,EVERY` swap a SIZE-byte chunk with a nearby one, once every EVERY bytes
+ * `--byte-corrupt EVERY` random value for one byte, once every EVERY bytes
+ * `--bitflip RATE` fraction of bits to flip, `0.0001` is one in ten thousand
+ * `--repeat SIZE,EVERY` copy a SIZE-byte chunk over the next one, once every EVERY bytes
+ * `--header-bytes BYTES` bytes left alone (default 1024)
+ * `--target TARGET` which part of the file to change (see below). `all` is the default, `auto` picks by file type
 
- * `--byte-swap SIZE,EVERY` swaps a SIZE-byte chunk with a nearby one, once every EVERY bytes.
- * `--byte-corrupt EVERY` replaces one byte with a random value, once every EVERY bytes.
- * `--bitflip RATE` flips that fraction of bits, e.g. `0.0001` is one bit in ten thousand.
- * `--repeat SIZE,EVERY` copies a SIZE-byte chunk over the next one, once every EVERY bytes (smears and stutters).
- * `--header-bytes BYTES` bytes left untouched (default 1024, which keeps most file signatures and basic headers).
- * `--target TARGET` chooses which part of the file byte operations change (see below). The default, `all`, is everything after `--header-bytes`; `auto` picks a target from the file type.
+### Frame mode (MPEG-4 AVI only)
+ * `--iframe-drop KEEP` keep the first KEEP keyframes, remove the rest
+ * `--pframe-repeat EVERY,COUNT` every EVERY frames, repeat a P-frame COUNT more times
 
-Frame mode options (AVI with MPEG-4 part 2 video only):
+### Other
+ * `--preset NAME_OR_FILE` add a preset's operations
+ * `--save-preset NAME_OR_FILE [--description TEXT]` save this run as a preset (`--force` to overwrite)
+ * `--list-presets`
+ * `--seed N` reproducible output
+ * `-q` quiet
 
- * `--iframe-drop KEEP` keeps the first KEEP keyframes and removes all the rest.
- * `--pframe-repeat EVERY,COUNT` once every EVERY video frames, repeats a P-frame COUNT more times.
+## Datamosh
+Dropping a keyframe makes the following P-frames apply their motion to the old picture. Repeating a P-frame smears it. Audio is untouched and the index is dropped (players rebuild it). Try `--preset datamosh`.
 
-Every operation is repeatable, and they all run in the order given. Other options:
-
- * `--preset NAME_OR_FILE` adds the operations from a preset (see below).
- * `--seed N` makes the output reproducible.
- * `--save-preset NAME_OR_FILE [--description TEXT]` saves this run's settings as a preset. It won't replace an existing preset unless you add `--force`, and it always prints where it saved, even with `-q`.
- * `--list-presets` lists the available presets.
- * `-q` / `--quiet` suppresses the file name output.
-
-With no operations given it uses the `default` preset. See `-h` for details.
-
-## Datamosh (video)
-A keyframe holds a whole picture; the P-frames after it only hold motion vectors and changes. `--iframe-drop` removes keyframes, so the next P-frames apply their motion to whatever picture came before. `--pframe-repeat` replays a P-frame's motion several times, so the picture smears and blooms. Audio is left alone, and the index is dropped so players rebuild it. Try `--preset datamosh`.
-
-To move a still image with a clip's motion, encode the image followed by the clip with a keyframe at the cut and none elsewhere, then drop that one:
+To push a still image around with a clip's motion, make an AVI of the still followed by the clip, with a keyframe at the cut only, then drop it:
 ```
 ffmpeg -loop 1 -framerate 10 -t 0.5 -i still.png -i clip.mp4 \
   -filter_complex "[0:v]setsar=1[a];[1:v]scale=W:H,setsar=1[b];[a][b]concat=n=2:v=1[v]" \
   -map "[v]" -c:v mpeg4 -g 9999 -bf 0 -force_key_frames 0.5 -r 10 -an in.avi
 python3 media_glitcher.py in.avi out.avi --iframe-drop 1
 ```
-(`W:H` is the still's size, and `0.5` the still's length in seconds.) Use `-bf 0`: B-frames reference frames out of order, which makes the result unpredictable.
+`W:H` is the still's size, `0.5` its length in seconds. Keep `-bf 0`, B-frames make it unpredictable.
 
-`--target avi-frames` (also picked by `--target auto`) points byte operations at the compressed video frames only, so `--bitflip` or `--byte-corrupt` damage the picture without breaking the file's structure. Use it when mixing: byte operations on the default `all` target can hit a chunk header, and a frame operation after that refuses the file.
+`--target avi-frames` points byte operations at the video frames only, so they don't break the file's structure. Use it when mixing byte and frame operations.
 
-Anything that isn't an MPEG-4 part 2 AVI (H.264 MP4s, for instance) is refused with an error. Convert first, e.g. `ffmpeg -i in.mp4 -c:v mpeg4 -bf 0 in.avi`. Dropping a keyframe in H.264 is a different job and isn't supported.
+Other video (H.264 MP4s etc.) is refused. Convert first: `ffmpeg -i in.mp4 -c:v mpeg4 -bf 0 in.avi`
 
-## JPEG targets
-Plain byte mode can hit a JPEG's headers, tables and metadata as easily as its pixels, which is why it sometimes breaks the file. The JPEG targets read the file's structure and only change one part:
+## Targets
+Targets find the part of the file to change, so the rest stays intact.
 
- * `--target jpeg-scan` changes only the compressed image data, never leaving a byte that would end it early. Headers, tables, metadata (including the thumbnail) and the extra images iPhones append stay untouched. You get streaks and shifted rows, and the file keeps its structure. Try `--preset jpeg-streaks`.
- * `--target jpeg-tables` changes only the quantization tables, which set how coarsely detail is stored. You get a texture over the whole image, from a fine weave (`--preset jpeg-texture`) to bold block patterns (`--preset jpeg-texture-heavy`). The tables are tiny, so use small spacings like `--byte-corrupt 16` or high rates like `--bitflip 0.1`.
+ * `jpeg-scan`: image data only. Streaks and shifted rows, file stays openable. Try `--preset jpeg-streaks`.
+ * `jpeg-tables`: quantization tables only. A texture over the whole image. Tables are tiny, so use small spacings (`--byte-corrupt 16`) or high rates (`--bitflip 0.1`). Try `--preset jpeg-texture`.
+ * `bmp-pixels`, `ppm-pixels`: raw pixels of uncompressed BMP, PPM/PGM/PBM.
+ * `wav-samples`, `aiff-samples`: raw audio. Keep `--repeat` and `--byte-swap` sizes a multiple of 24 for clean stutters, other sizes are loud noise. Try `--preset audio-stutter`.
+ * `avi-frames`: see above.
 
-Tested on baseline, progressive, restart-marker and iPhone-style JPEGs and a photo (600 runs per target): with `jpeg-scan` libjpeg decoded all of them and macOS opened 598 (both misses were progressive), against 502 with `all`. `jpeg-tables` decoded every time without a warning.
-
-## Uncompressed targets
-These targets find the raw pixels or samples from the file's own header, instead of guessing with `--header-bytes`. The header, a BMP's colour palette, and anything stored after the data (colour profiles, metadata chunks) stay untouched.
-
- * `--target bmp-pixels`: uncompressed BMPs (1, 8, 24 and 32 bit).
- * `--target ppm-pixels`: binary PPM, PGM and PBM.
- * `--target wav-samples` and `--target aiff-samples`: uncompressed WAV, AIFF and AIFF-C (integer or float samples).
-
-Compressed variants (RLE BMPs, ADPCM or u-law WAVs, IMA4 AIFF-C) are refused with an error rather than damaged blindly. `--target auto` picks the right one of these, or a JPEG target, from the file's first bytes, and falls back to `all` for other files.
-
-For audio, keep `--repeat` and `--byte-swap` sizes a multiple of 24 bytes: samples then stay aligned and you get clean stutters, while other sizes turn into loud noise. Try `--preset audio-stutter` or `--preset audio-crackle`.
+Compressed variants (RLE BMP, ADPCM WAV, etc.) are refused. `--target auto` picks one by file type, or `all` if it doesn't know.
 
 ## What files to glitch
-How a format stores its data decides how it reacts. "Tested" means glitched with many seeds and checked that macOS (or Pillow) can still decode it; the rest is what to expect from how the format works, not yet tried.
+"Tested" means I glitched it with lots of seeds and checked macOS or Pillow still opens it.
 
 | Format | How it reacts | Status |
 |---|---|---|
-| JPEG | Small byte changes spread into horizontal streaks, shifted rows and colour bands. Use the JPEG targets above to keep the file intact. | Tested |
-| BMP, uncompressed TIFF | Always opened. Damage stays where you put it (shifted bands, speckle), so it needs much heavier settings: try `--preset bytes-uncompressed`, with `--target bmp-pixels` for BMPs. Light settings are invisible. | Tested |
-| PNG | Opens, but the image goes black from the first damaged spot, because the pixels are compressed and checksummed. A PNG-aware mode is planned. | Tested |
-| PPM/PGM/PBM | Like BMP: raw pixels after a tiny header. Use `--target ppm-pixels`. | Tested |
-| WAV, AIFF | Raw audio: clicks, stutters and repeats. Use `--target auto` and sizes that are multiples of 24 (see above). | Tested |
-| AVI (Xvid/MPEG-4) | The classic target for video glitching; the `gif-glitched-waves` example came from line mode on video. Frame mode and `avi-frames` datamosh it (see above). | Lightly tested (ffmpeg decodes the output) |
-| MP4/MOV (iPhone video) | Players often refuse damaged files. Convert to AVI first. | Expected |
-| GIF | Compressed (LZW), so damage tends to cut the image off, like PNG. | Expected |
-| HEIC (iPhone photos) | Not supported. Set the camera to "Most Compatible" or export as JPEG. | Not planned |
+| JPEG | Streaks, shifted rows, colour bands. Use the JPEG targets. | Tested |
+| BMP, TIFF (uncompressed) | Always opens. Needs heavy settings, try `--preset bytes-uncompressed`. | Tested |
+| PNG | Opens, then goes black at the first damage (compressed and checksummed). | Tested |
+| PPM/PGM/PBM | Like BMP. | Tested |
+| WAV, AIFF | Clicks, stutters, repeats. | Tested |
+| AVI (Xvid/MPEG-4) | Classic video target. Frame mode and `avi-frames` datamosh it. | Lightly tested |
+| MP4/MOV | Players often refuse them. Convert to AVI first. | Expected |
+| GIF | Compressed, so damage tends to cut it off like PNG. | Expected |
+| HEIC | Not supported. Export as JPEG. | Not planned |
 
 ## Presets
-A preset is a JSON file for a whole run: the operations in order, plus optional `header_length`, `header_bytes`, `target`, `seed` and `description`.
-A bare name is looked up in `presets/`; anything with a `/` or `.json` is treated as a path.
+JSON file for a whole run: operations in order, plus optional `header_length`, `header_bytes`, `target`, `seed` and `description`. A bare name is looked up in `presets/`, anything with a `/` or `.json` is a path.
 ```json
 {
   "description": "Heavy glitching for video",
@@ -101,7 +89,6 @@ A bare name is looked up in `presets/`; anything with a `/` or `.json` is treate
   "seed": 42,
   "operations": [
     {"type": "swap", "interval": 200, "flavour": 50},
-    {"type": "corrupt", "interval": 200, "flavour": 30},
     {"type": "byte-swap", "size": 64, "every": 5000},
     {"type": "bitflip", "rate": 0.0001}
   ]
@@ -111,16 +98,17 @@ A bare name is looked up in `presets/`; anything with a `/` or `.json` is treate
 python3 media_glitcher.py in.avi out.avi --preset recommended
 python3 media_glitcher.py in.avi out.avi --swap 200,50 --corrupt 200,30 --save-preset mine
 ```
-Options on the command line override a preset's `header_length`, `header_bytes`, `target` and `seed`. A preset with a `seed` gives identical output every run, which makes presets usable as test cases.
-`presets.py` and `engine.py` have no CLI dependencies, so other programs can load presets with `presets.load()` and run them with `engine.glitch(data, operations, ...)`.
+Command line options override the preset's `header_length`, `header_bytes`, `target` and `seed`. A preset with a `seed` always gives the same output.
 
-`--list-presets` lists them. `recommended` holds the settings that have worked well on their own and together (five operations). It's also split into three smaller presets, `swaps-sparse`, `swaps-frequent` and `corrupt-escalating`, so you can use one or a few at a time, e.g. `--preset swaps-frequent --preset corrupt-escalating`. Using all three runs the same operations as `recommended`, but in a different order, so the result differs.
+`recommended` has the settings that worked well on their own and together. It's also split into `swaps-sparse`, `swaps-frequent` and `corrupt-escalating`, so you can combine them (`--preset swaps-frequent --preset corrupt-escalating`). All three runs the same operations in a different order, so the result differs.
+
+`presets.py` and `engine.py` don't depend on the CLI, so you can import them: `presets.load()`, `engine.glitch(data, operations, ...)`.
 
 ## Tests
 ```
 python3 -m unittest discover -s tests
 ```
-`tests/cases.json` holds golden-output cases: a seeded `test-*` preset, a generated input, and the expected SHA-256 of the result. If glitch behaviour changes on purpose, regenerate the hashes with `python3 tests/test_golden.py --update` and review the diff. Hashes depend on Python's `random`, so they may need regenerating on a different Python version.
+`tests/cases.json` has golden-output cases (seeded preset, generated input, expected SHA-256). If glitch behaviour changes on purpose, run `python3 tests/test_golden.py --update` and review the diff. Hashes can change between Python versions.
 
 ## Examples
 When used on images:
