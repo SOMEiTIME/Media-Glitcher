@@ -1,0 +1,8 @@
+{
+  "description": "Datamosh an MPEG-4 AVI: drop every keyframe after the first, and repeat some P-frames so motion smears and blooms",
+  "seed": 1,
+  "operations": [
+    {"type": "iframe-drop", "keep": 1},
+    {"type": "pframe-repeat", "every": 20, "count": 6}
+  ]
+}

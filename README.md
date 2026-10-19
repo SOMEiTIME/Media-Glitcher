@@ -6,10 +6,11 @@ for python 3
 python3 media_glitcher.py input_file output_file [options]
 ```
 
-There are two modes, and you can mix them in one run:
+There are three modes, and you can mix them in one run:
 
  * **Line mode** (the original): splits the file wherever a newline byte happens to be, then swaps "lines". Lines in binary data have random lengths, so results are unpredictable, which is part of the charm.
  * **Byte mode**: works on exact byte positions and sizes, so the amount and spacing of damage is under your control.
+ * **Frame mode**: datamoshes MPEG-4 AVI video by removing or repeating whole frames (see below).
 
 Line mode options:
 
@@ -25,6 +26,11 @@ Byte mode options:
  * `--header-bytes BYTES` bytes left untouched (default 1024, which keeps most file signatures and basic headers).
  * `--target TARGET` chooses which part of the file byte operations change (see below). The default, `all`, is everything after `--header-bytes`; `auto` picks a target from the file type.
 
+Frame mode options (AVI with MPEG-4 part 2 video only):
+
+ * `--iframe-drop KEEP` keeps the first KEEP keyframes and removes all the rest.
+ * `--pframe-repeat EVERY,COUNT` once every EVERY video frames, repeats a P-frame COUNT more times.
+
 Every operation is repeatable, and they all run in the order given. Other options:
 
  * `--preset NAME_OR_FILE` adds the operations from a preset (see below).
@@ -34,6 +40,22 @@ Every operation is repeatable, and they all run in the order given. Other option
  * `-q` / `--quiet` suppresses the file name output.
 
 With no operations given it uses the `default` preset. See `-h` for details.
+
+## Datamosh (video)
+A keyframe holds a whole picture; the P-frames after it only hold motion vectors and changes. `--iframe-drop` removes keyframes, so the next P-frames apply their motion to whatever picture came before. `--pframe-repeat` replays a P-frame's motion several times, so the picture smears and blooms. Audio is left alone, and the index is dropped so players rebuild it. Try `--preset datamosh`.
+
+To move a still image with a clip's motion, encode the image followed by the clip with a keyframe at the cut and none elsewhere, then drop that one:
+```
+ffmpeg -loop 1 -framerate 10 -t 0.5 -i still.png -i clip.mp4 \
+  -filter_complex "[0:v]setsar=1[a];[1:v]scale=W:H,setsar=1[b];[a][b]concat=n=2:v=1[v]" \
+  -map "[v]" -c:v mpeg4 -g 9999 -bf 0 -force_key_frames 0.5 -r 10 -an in.avi
+python3 media_glitcher.py in.avi out.avi --iframe-drop 1
+```
+(`W:H` is the still's size, and `0.5` the still's length in seconds.) Use `-bf 0`: B-frames reference frames out of order, which makes the result unpredictable.
+
+`--target avi-frames` (also picked by `--target auto`) points byte operations at the compressed video frames only, so `--bitflip` or `--byte-corrupt` damage the picture without breaking the file's structure. Use it when mixing: byte operations on the default `all` target can hit a chunk header, and a frame operation after that refuses the file.
+
+Anything that isn't an MPEG-4 part 2 AVI (H.264 MP4s, for instance) is refused with an error. Convert first, e.g. `ffmpeg -i in.mp4 -c:v mpeg4 -bf 0 in.avi`. Dropping a keyframe in H.264 is a different job and isn't supported.
 
 ## JPEG targets
 Plain byte mode can hit a JPEG's headers, tables and metadata as easily as its pixels, which is why it sometimes breaks the file. The JPEG targets read the file's structure and only change one part:
@@ -64,7 +86,7 @@ How a format stores its data decides how it reacts. "Tested" means glitched with
 | PNG | Opens, but the image goes black from the first damaged spot, because the pixels are compressed and checksummed. A PNG-aware mode is planned. | Tested |
 | PPM/PGM/PBM | Like BMP: raw pixels after a tiny header. Use `--target ppm-pixels`. | Tested |
 | WAV, AIFF | Raw audio: clicks, stutters and repeats. Use `--target auto` and sizes that are multiples of 24 (see above). | Tested |
-| AVI (Xvid/MPEG-4) | The classic target for video glitching; the `gif-glitched-waves` example came from line mode on video. | Expected |
+| AVI (Xvid/MPEG-4) | The classic target for video glitching; the `gif-glitched-waves` example came from line mode on video. Frame mode and `avi-frames` datamosh it (see above). | Lightly tested (ffmpeg decodes the output) |
 | MP4/MOV (iPhone video) | Players often refuse damaged files. Convert to AVI first. | Expected |
 | GIF | Compressed (LZW), so damage tends to cut the image off, like PNG. | Expected |
 | HEIC (iPhone photos) | Not supported. Set the camera to "Most Compatible" or export as JPEG. | Not planned |

@@ -16,6 +16,8 @@ OPERATION_HELP = {
     "byte-corrupt": "byte mode: replace one byte with a random value, once every EVERY bytes",
     "bitflip": "byte mode: flip a RATE fraction of the bits, e.g. 0.0001",
     "repeat": "byte mode: copy a SIZE-byte chunk over the next one, once every EVERY bytes",
+    "iframe-drop": "frame mode (MPEG-4 AVI): datamosh by removing every keyframe after the first KEEP",
+    "pframe-repeat": "frame mode (MPEG-4 AVI): once every EVERY video frames, repeat a P-frame COUNT more times",
 }
 
 #
@@ -137,7 +139,7 @@ def main(argv=None):
     if args.save_preset:
         # only store the header settings the operations actually use
         uses_lines = any(engine.is_line_operation(op) for op in operations)
-        uses_bytes = any(not engine.is_line_operation(op) for op in operations)
+        uses_bytes = any(engine.is_byte_operation(op) for op in operations)
         try:
             path = presets.save(args.save_preset, operations, seed=seed, description=args.description,
                                 header_length=header_length if uses_lines else None,
