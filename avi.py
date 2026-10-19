@@ -23,9 +23,10 @@ def _le(data, pos):
     return int.from_bytes(data[pos:pos + 4], "little")
 
 # True for a video frame chunk id, e.g. b"00dc" (compressed) or b"00db" (uncompressed)
-def _is_video(chunk_id):
+def is_video(chunk_id):
     return chunk_id[:2].isdigit() and chunk_id[2:] in (b"dc", b"db")
 
+# True if a video frame's data is a keyframe; the start code is near the start, after any codec headers
 def is_keyframe(payload):
     at = payload.find(VOP_START, 0, 64)
     return at != -1 and at + 4 < len(payload) and payload[at + 4] >> 6 == 0
@@ -53,7 +54,7 @@ def _layout(data):
     frames = _chunks(data, movi_start + 12, movi_end)
     if any(chunk_id == b"LIST" for chunk_id, _, _ in frames):
         raise AviError("AVIs with 'rec' lists aren't supported")
-    if not any(is_keyframe(data[s + 8:e]) for i, s, e in frames if _is_video(i)):
+    if not any(is_keyframe(data[s + 8:e]) for i, s, e in frames if is_video(i)):
         raise AviError("no MPEG-4 part 2 video found (convert it with ffmpeg -c:v mpeg4, or libxvid)")
     after = [c for c in top if c[1] > movi_start and c[0] != b"idx1"]
     return movi_start, frames, after
@@ -65,7 +66,7 @@ def _layout(data):
 #
 def frame_ranges(data):
     _, frames, _ = _layout(data)
-    return [(s + 8, e) for i, s, e in frames if _is_video(i) and e > s + 8]
+    return [(s + 8, e) for i, s, e in frames if is_video(i) and e > s + 8]
 
 #
 # Splits an AVI into (before, frames, after) where before and after are the
@@ -83,10 +84,6 @@ def join(before, frames, after):
     body = b"AVI " + before + b"LIST" + len(movi).to_bytes(4, "little") + movi + after
     return b"RIFF" + len(body).to_bytes(4, "little") + body
 
-# True for frames that are video; the others are audio and padding
-def _video(frame):
-    return _is_video(frame[0])
-
 #
 # iframe-drop: keeps the first `keep` keyframes and removes every one after
 # them, so the video carries on moving the last picture it had
@@ -94,7 +91,7 @@ def _video(frame):
 def iframe_drop(frames, rng, keep):
     seen, kept = 0, []
     for frame in frames:
-        if _video(frame) and is_keyframe(frame[1]):
+        if is_video(frame[0]) and is_keyframe(frame[1]):
             seen += 1
             if seen > keep:
                 continue
@@ -106,7 +103,7 @@ def iframe_drop(frames, rng, keep):
 # stretch and plays it `count` more times in a row
 #
 def pframe_repeat(frames, rng, every, count):
-    video = [n for n, frame in enumerate(frames) if _video(frame)]
+    video = [n for n, frame in enumerate(frames) if is_video(frame[0])]
     picks = []
     for window in range(0, len(video), every):
         pframes = [n for n in video[window:window + every] if frames[n][1] and not is_keyframe(frames[n][1])]

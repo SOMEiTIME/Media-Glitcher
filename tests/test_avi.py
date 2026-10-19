@@ -1,4 +1,4 @@
-import os, random, sys, unittest
+import os, sys, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -9,7 +9,7 @@ with open(os.path.join(HERE, "fixtures", "mpeg4.avi"), "rb") as f:
     SOURCE = f.read()
 
 def video(data):
-    return [payload for chunk_id, payload in avi.split(data)[1] if avi._is_video(chunk_id)]
+    return [payload for chunk_id, payload in avi.split(data)[1] if avi.is_video(chunk_id)]
 
 def keyframes(data):
     return [n for n, payload in enumerate(video(data)) if avi.is_keyframe(payload)]
@@ -41,17 +41,18 @@ class AviTest(unittest.TestCase):
         self.assertEqual(len(keyframes(out)), 4)  # keyframes are never the repeated frame
 
     def test_audio_is_kept(self):
-        audio = lambda data: [p for i, p in avi.split(data)[1] if not avi._is_video(i)]
+        audio = lambda data: [p for i, p in avi.split(data)[1] if not avi.is_video(i)]
         out = run(SOURCE, {"type": "iframe-drop", "keep": 1}, {"type": "pframe-repeat", "every": 3, "count": 2})
         self.assertEqual(audio(out), audio(SOURCE))
 
     def test_seeded_and_mixed_with_byte_operations(self):
         ops = [{"type": "iframe-drop", "keep": 1}, {"type": "byte-corrupt", "every": 100},
                {"type": "pframe-repeat", "every": 4, "count": 1}]
-        self.assertEqual(run(SOURCE, *ops, seed=3, target="avi-frames"), run(SOURCE, *ops, seed=3, target="avi-frames"))
-        self.assertNotEqual(run(SOURCE, *ops, seed=3, target="avi-frames"), run(SOURCE, *ops, seed=4, target="avi-frames"))
+        mosh = lambda seed: run(SOURCE, *ops, seed=seed, target="avi-frames")
+        self.assertEqual(mosh(3), mosh(3))
+        self.assertNotEqual(mosh(3), mosh(4))
         for seed in range(5):  # still parses after every kind of change
-            avi.split(run(SOURCE, *ops, seed=seed, target="avi-frames"))
+            avi.split(mosh(seed))
 
     def test_avi_frames_target_only_changes_video_payloads(self):
         ranges = avi.frame_ranges(SOURCE)

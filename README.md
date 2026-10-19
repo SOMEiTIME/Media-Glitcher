@@ -86,7 +86,7 @@ How a format stores its data decides how it reacts. "Tested" means glitched with
 | PNG | Opens, but the image goes black from the first damaged spot, because the pixels are compressed and checksummed. A PNG-aware mode is planned. | Tested |
 | PPM/PGM/PBM | Like BMP: raw pixels after a tiny header. Use `--target ppm-pixels`. | Tested |
 | WAV, AIFF | Raw audio: clicks, stutters and repeats. Use `--target auto` and sizes that are multiples of 24 (see above). | Tested |
-| AVI (Xvid/MPEG-4) | The classic target for video glitching; the `gif-glitched-waves` example came from line mode on video. Frame mode and `avi-frames` datamosh it (see above). | Tested with ffmpeg |
+| AVI (Xvid/MPEG-4) | The classic target for video glitching; the `gif-glitched-waves` example came from line mode on video. Frame mode and `avi-frames` datamosh it (see above). | Lightly tested (ffmpeg decodes the output) |
 | MP4/MOV (iPhone video) | Players often refuse damaged files. Convert to AVI first. | Expected |
 | GIF | Compressed (LZW), so damage tends to cut the image off, like PNG. | Expected |
 | HEIC (iPhone photos) | Not supported. Set the camera to "Most Compatible" or export as JPEG. | Not planned |
