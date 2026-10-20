@@ -4,23 +4,24 @@ Small Python 3 tool that glitches media files (images, video) by swapping and co
 
 ## Run
 ```
-python3 media_glitcher.py input_file output_file [--swap I,F] [--corrupt I,F] [--byte-swap S,E] [--byte-corrupt E] [--bitflip R] [--repeat S,E] [--iframe-drop K] [--pframe-repeat E,C] [--preset NAME_OR_FILE] [--save-preset NAME_OR_FILE] [--header-length N] [--header-bytes N] [--target T] [--seed N]
+python3 media_glitcher.py input_file output_file [--swap I,F] [--corrupt I,F] [--byte-swap S,E] [--byte-corrupt E] [--bitflip R] [--repeat S,E] [--iframe-drop K] [--pframe-repeat E,C] [--pixel-sort K,L,H,A] [--preset NAME_OR_FILE] [--save-preset NAME_OR_FILE] [--header-length N] [--header-bytes N] [--target T] [--seed N]
 python3 media_glitcher.py --list-presets
 ```
-- Python 3 (ported from 2.7), stdlib only (it also runs in a-Shell on iPhone). Files are read as bytes; line mode decodes them as latin-1 so binary data round-trips byte for byte.
+- Python 3 (ported from 2.7), stdlib only (it also runs in a-Shell on iPhone). The one exception is `--pixel-sort`, which imports NumPy lazily; keep everything else working without it. Files are read as bytes; line mode decodes them as latin-1 so binary data round-trips byte for byte.
 - Don't run it on files in `examples/`; the output path gets overwritten.
 
 ## Layout
 - `media_glitcher.py` — argparse CLI; one flag per entry in `engine.OPERATIONS`, run in the order given. Saved "good settings" are presets, not code.
-- `engine.py` — `glitch(data, operations, ...)` runs operations with one seeded `random.Random`. A new operation needs an `OPERATIONS` entry, a function in `BYTE_FUNCTIONS` (or `LINE_FUNCTIONS` or `FRAME_FUNCTIONS`), and help text in the CLI.
+- `engine.py` — `glitch(data, operations, ...)` runs operations with one seeded `random.Random`. A new operation needs an `OPERATIONS` entry, a function in `BYTE_FUNCTIONS` (or `LINE_FUNCTIONS`, `FRAME_FUNCTIONS` or `PIXEL_FUNCTIONS`), and help text in the CLI.
 - `media.py` — line mode: `media` class splits the lines into header and body, exposes `glitch_random_swap(interval, flavour)` and `glitch_corrupt(interval, flavour)`, then `text()`.
 - `byte_ops.py` — byte mode operations; each edits a bytearray in place and keeps the header and length.
 - `avi.py` — frame mode: `split`/`join` an MPEG-4 AVI into video frames (keyframes found from the VOP header), `iframe_drop` and `pframe_repeat` (datamosh) as `engine.FRAME_FUNCTIONS`, and the `avi-frames` target. Frame operations change the file's length and drop its index, unlike byte operations.
 - `jpeg.py` — JPEG marker parser for the `jpeg-scan`/`jpeg-tables` targets (`engine.FORMAT_TARGETS`). A target gives the byte ranges to glitch and a repair step afterwards (no stray FF in scan data, no zero quantization values).
 - `uncompressed.py` — BMP, PPM/PGM/PBM, WAV and AIFF targets: find the raw data from the header, no repair needed. `engine.detect_target()` picks a target for `--target auto`. Don't use the stdlib `aifc` module (removed in Python 3.13, which a-Shell runs).
+- `pixel_sort.py` — pixel mode: `pixel_sort(frame, key, low, high, angle)` on an H x W x 3 uint8 NumPy array (vectorized, no per-pixel loops), and `decode`, which reads an 8-bit PPM and returns the frame with a matching encoder. Uses no random draws, so seeded output of other operations doesn't change.
 - `presets.py` — load/validate/save/apply presets; no CLI dependency, safe to import elsewhere.
 - `presets/` — preset JSON files. `default` is what runs with no operations.
-- `tests/` — `python3 -m unittest discover -s tests`. `tests/fixtures/` holds small JPEGs made with `cjpeg` (baseline, progressive, restart markers), a BMP made with Pillow and a WAV made with `wave`.
+- `tests/` — `python3 -m unittest discover -s tests`. `tests/fixtures/` holds small JPEGs made with `cjpeg` (baseline, progressive, restart markers), a BMP made with Pillow and a WAV made with `wave`. Pixel-sort tests skip without NumPy.
 - `examples/` — sample outputs referenced by the README.
 
 ## Conventions and gotchas

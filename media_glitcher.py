@@ -3,7 +3,7 @@
 # Command line entry point for glitching media
 
 import argparse, os
-import engine, presets
+import engine, pixel_sort, presets
 
 DEFAULT_PRESET = "default" # run when no operations are given
 SETTINGS = ("header_length", "header_bytes", "seed", "target") # preset fields the command line can override
@@ -18,6 +18,9 @@ OPERATION_HELP = {
     "repeat": "byte mode: copy a SIZE-byte chunk over the next one, once every EVERY bytes",
     "iframe-drop": "frame mode (MPEG-4 AVI): datamosh by removing every keyframe after the first KEEP",
     "pframe-repeat": "frame mode (MPEG-4 AVI): once every EVERY video frames, repeat a P-frame COUNT more times",
+    "pixel-sort": "pixel mode (8-bit binary PPM; needs NumPy): sort runs of pixels "
+                  "whose KEY (%s) is from LOW to HIGH (0 to 1), along lines at ANGLE degrees "
+                  "(0 left to right, 90 top to bottom, 180 right to left)" % ", ".join(pixel_sort.KEYS),
 }
 
 #
@@ -33,7 +36,8 @@ def operation_arg(op_type):
         if len(parts) != len(params):
             raise usage
         try:
-            op = {"type": op_type, **{name: kind(part) for (name, kind, _), part in zip(params, parts)}}
+            op = {"type": op_type, **{name: part if isinstance(kind, tuple) else kind(part)
+                                      for (name, kind, _), part in zip(params, parts)}}
         except ValueError:
             raise usage
         try:
