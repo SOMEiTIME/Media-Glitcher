@@ -7,7 +7,7 @@ Small Python 3 tool that glitches media files (images, video) by swapping and co
 python3 media_glitcher.py input_file output_file [--swap I,F] [--corrupt I,F] [--byte-swap S,E] [--byte-corrupt E] [--bitflip R] [--repeat S,E] [--iframe-drop K] [--pframe-repeat E,C] [--pixel-sort K,L,H,A] [--preset NAME_OR_FILE] [--save-preset NAME_OR_FILE] [--header-length N] [--header-bytes N] [--target T] [--seed N]
 python3 media_glitcher.py --list-presets
 ```
-- Python 3 (ported from 2.7), stdlib only (it also runs in a-Shell on iPhone). The one exception is `--pixel-sort`, which imports NumPy lazily; keep everything else working without it. Files are read as bytes; line mode decodes them as latin-1 so binary data round-trips byte for byte.
+- Python 3 (ported from 2.7), stdlib only (it also runs in a-Shell on iPhone). The one exception is `--pixel-sort`, which imports NumPy lazily and uses ffmpeg for formats other than PPM; keep everything else working without them. Files are read as bytes; line mode decodes them as latin-1 so binary data round-trips byte for byte.
 - Don't run it on files in `examples/`; the output path gets overwritten.
 
 ## Layout
@@ -18,10 +18,10 @@ python3 media_glitcher.py --list-presets
 - `avi.py` — frame mode: `split`/`join` an MPEG-4 AVI into video frames (keyframes found from the VOP header), `iframe_drop` and `pframe_repeat` (datamosh) as `engine.FRAME_FUNCTIONS`, and the `avi-frames` target. Frame operations change the file's length and drop its index, unlike byte operations.
 - `jpeg.py` — JPEG marker parser for the `jpeg-scan`/`jpeg-tables` targets (`engine.FORMAT_TARGETS`). A target gives the byte ranges to glitch and a repair step afterwards (no stray FF in scan data, no zero quantization values).
 - `uncompressed.py` — BMP, PPM/PGM/PBM, WAV and AIFF targets: find the raw data from the header, no repair needed. `engine.detect_target()` picks a target for `--target auto`. Don't use the stdlib `aifc` module (removed in Python 3.13, which a-Shell runs).
-- `pixel_sort.py` — pixel mode: `pixel_sort(frame, key, low, high, angle)` on an H x W x 3 uint8 NumPy array (vectorized, no per-pixel loops), and `decode`, which reads an 8-bit PPM and returns the frame with a matching encoder. Uses no random draws, so seeded output of other operations doesn't change.
+- `pixel_sort.py` — pixel mode: `pixel_sort(frame, key, low, high, angle)` on an H x W x 3 uint8 NumPy array (vectorized, no per-pixel loops), and `decode`, which reads PPM directly or another format through ffmpeg and returns the frame with a matching encoder. Uses no random draws, so seeded output of other operations doesn't change.
 - `presets.py` — load/validate/save/apply presets; no CLI dependency, safe to import elsewhere.
 - `presets/` — preset JSON files. `default` is what runs with no operations.
-- `tests/` — `python3 -m unittest discover -s tests`. `tests/fixtures/` holds small JPEGs made with `cjpeg` (baseline, progressive, restart markers), a BMP made with Pillow and a WAV made with `wave`. Pixel-sort tests skip without NumPy.
+- `tests/` — `python3 -m unittest discover -s tests`. `tests/fixtures/` holds small JPEGs made with `cjpeg` (baseline, progressive, restart markers), a BMP made with Pillow and a WAV made with `wave`. Pixel-sort tests skip without NumPy, and their JPEG test skips without a working ffmpeg.
 - `examples/` — sample outputs referenced by the README.
 
 ## Conventions and gotchas

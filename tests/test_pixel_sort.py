@@ -1,4 +1,4 @@
-import os, sys, tempfile, unittest
+import os, subprocess, sys, tempfile, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -8,6 +8,13 @@ try:
     import numpy as np
 except ImportError:
     np = None
+
+def ffmpeg_works():
+    try:
+        return subprocess.run(["ffmpeg", "-version"], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL).returncode == 0
+    except OSError:
+        return False
 
 def op(key="brightness", low=0.0, high=1.0, angle=0.0):
     return {"type": "pixel-sort", "key": key, "low": low, "high": high, "angle": angle}
@@ -110,10 +117,23 @@ class ImageTest(unittest.TestCase):
         with self.assertRaisesRegex(engine.GlitchError, "can't use pixel-sort: PPM is shorter"):
             engine.glitch(self.ppm[:-1], [op()])
 
-    def test_refuses_other_formats(self):
-        for data in (b"\xff\xd8" + bytes(100), b"P5\n3 2\n255\n" + bytes(6), b"P6\n3 2\n65535\n" + bytes(36)):
-            with self.assertRaisesRegex(engine.GlitchError, "works on 8-bit binary PPM"):
-                engine.glitch(data, [op()])
+    @unittest.skipUnless(ffmpeg_works(), "needs a working ffmpeg")
+    def test_jpeg_stays_jpeg(self):
+        with open(os.path.join(HERE, "fixtures", "baseline.jpg"), "rb") as f:
+            data = f.read()
+        result = engine.glitch(data, [op(low=0.3, high=0.8)])
+        self.assertTrue(result.startswith(b"\xff\xd8"))
+        frame, _ = pixel_sort.decode(result)
+        self.assertEqual(frame.shape, pixel_sort.decode(data)[0].shape)
+
+    @unittest.skipIf(ffmpeg_works(), "only for when ffmpeg is missing or broken")
+    def test_explains_missing_ffmpeg(self):
+        with self.assertRaisesRegex(engine.GlitchError, "can't use pixel-sort: .*ffmpeg"):
+            engine.glitch(b"\x89PNG\r\n\x1a\n" + bytes(100), [op()])
+
+    def test_refuses_unknown_formats(self):
+        with self.assertRaisesRegex(engine.GlitchError, "works on JPEG, PNG, BMP and PPM"):
+            engine.glitch(b"GIF89a" + bytes(100), [op()])
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,7 +18,7 @@ OPERATION_HELP = {
     "repeat": "byte mode: copy a SIZE-byte chunk over the next one, once every EVERY bytes",
     "iframe-drop": "frame mode (MPEG-4 AVI): datamosh by removing every keyframe after the first KEEP",
     "pframe-repeat": "frame mode (MPEG-4 AVI): once every EVERY video frames, repeat a P-frame COUNT more times",
-    "pixel-sort": "pixel mode (8-bit binary PPM; needs NumPy): sort runs of pixels "
+    "pixel-sort": "pixel mode (JPEG, PNG, BMP, PPM; needs NumPy, and ffmpeg for all but PPM): sort runs of pixels "
                   "whose KEY (%s) is from LOW to HIGH (0 to 1), along lines at ANGLE degrees "
                   "(0 left to right, 90 top to bottom, 180 right to left)" % ", ".join(pixel_sort.KEYS),
 }
