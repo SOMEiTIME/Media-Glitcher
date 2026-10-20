@@ -16,8 +16,10 @@ class FormatError(ValueError):
 # bmp-pixels target: the pixel array of an uncompressed BMP
 #
 def bmp_pixels(data):
-    if data[:2] != b"BM" or len(data) < 34:
+    if data[:2] != b"BM":
         raise FormatError("not a BMP (it doesn't start with BM)")
+    if len(data) < 34:
+        raise FormatError("BMP is too short to have a full header")
     if int.from_bytes(data[14:18], "little") < 40:
         raise FormatError("old OS/2 BMPs aren't supported")
     offset = int.from_bytes(data[10:14], "little")
@@ -74,7 +76,7 @@ def wav_samples(data):
     fmt = chunks["fmt "][0]
     if int.from_bytes(data[fmt:fmt + 2], "little") not in (1, 3, 0xFFFE):  # PCM, float, extensible
         raise FormatError("compressed WAVs aren't supported")
-    return [chunks["data"]]
+    return _checked(data, *chunks["data"])
 
 #
 # aiff-samples target: the sample data in the SSND chunk of an AIFF, or of an

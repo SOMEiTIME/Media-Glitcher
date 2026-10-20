@@ -49,6 +49,10 @@ class FormatTest(unittest.TestCase):
         for bad in (bmp(compression=1)[0], b"BM" + bytes(12) + le(12, 4) + bytes(30)):  # RLE, OS/2 header
             with self.assertRaises(uncompressed.FormatError):
                 uncompressed.bmp_pixels(bad)
+        with self.assertRaisesRegex(uncompressed.FormatError, "too short"):
+            uncompressed.bmp_pixels(b"BM" + bytes(10))
+        with self.assertRaisesRegex(uncompressed.FormatError, "start with BM"):
+            uncompressed.bmp_pixels(bytes(40))
 
     def test_ppm(self):
         data = b"P6 # a comment\n3 2\n# another\n255\n" + bytes(18)
@@ -66,6 +70,9 @@ class FormatTest(unittest.TestCase):
         self.assertEqual(uncompressed.wav_samples(data), [expected])
         with self.assertRaises(uncompressed.FormatError):
             uncompressed.wav_samples(wav(format_tag=2)[0])  # ADPCM
+        empty = wav()[0].replace(chunk(b"data", bytes(i % 256 for i in range(800))), chunk(b"data", b""))
+        with self.assertRaises(uncompressed.FormatError):
+            uncompressed.wav_samples(empty)
 
     def test_aiff(self):
         for kind, compression in ((b"AIFF", b""), (b"AIFC", b"NONE"), (b"AIFC", b"twos")):
