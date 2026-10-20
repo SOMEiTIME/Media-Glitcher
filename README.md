@@ -6,11 +6,12 @@ for python 3
 python3 media_glitcher.py input_file output_file [options]
 ```
 
-Three modes, mix them in one run:
+Four modes, mix them in one run:
 
  * **Line mode**: swaps and corrupts "lines" (split at newline bytes). Random lengths, so unpredictable results.
  * **Byte mode**: exact byte positions and sizes, so you control the damage.
  * **Frame mode**: datamoshes MPEG-4 AVI video.
+ * **Pixel mode**: pixel sorts images.
 
 Operations run in the order given, and can be repeated. With none given, the `default` preset runs. `-h` has the details.
 
@@ -30,6 +31,11 @@ Operations run in the order given, and can be repeated. With none given, the `de
 ### Frame mode (MPEG-4 AVI only)
  * `--iframe-drop KEEP` keep the first KEEP keyframes, remove the rest
  * `--pframe-repeat EVERY,COUNT` every EVERY frames, repeat a P-frame COUNT more times
+
+### Pixel mode (images)
+ * `--pixel-sort KEY,LOW,HIGH,ANGLE` sort runs of pixels whose KEY is from LOW to HIGH (0 to 1) by that key, along lines at ANGLE degrees
+
+See [Pixel sort](#pixel-sort).
 
 ### Other
  * `--preset NAME_OR_FILE` add a preset's operations
@@ -53,6 +59,18 @@ python3 media_glitcher.py in.avi out.avi --iframe-drop 1
 `--target avi-frames` points byte operations at the video frames only, so they don't break the file's structure. Use it when mixing byte and frame operations.
 
 Other video (H.264 MP4s etc.) is refused. Convert first: `ffmpeg -i in.mp4 -c:v mpeg4 -bf 0 in.avi`
+
+## Pixel sort
+Pixels whose key is inside the threshold get sorted, darkest (or lowest) first, in unbroken runs along each line. Pixels outside it stay put and break the runs, so you get streaks, not a smear.
+
+ * KEY: `brightness`, `hue`, `saturation`, `r`, `g` or `b`
+ * LOW, HIGH: `0.25,0.8` sorts the midtones. `0,1` sorts whole lines
+ * ANGLE: `0` left to right, `90` top to bottom, `180` right to left (reversed), anything in between for diagonals
+
+```
+python3 media_glitcher.py in.jpg out.jpg --pixel-sort brightness,0.25,0.8,90
+```
+Needs NumPy (`pip install numpy`). PPM is read directly. JPEG, PNG and BMP go through `ffmpeg` and come back in the same format (PNG loses its transparency). It works on decoded pixels, so run it before byte operations, or the image will be broken. No randomness: `--seed` doesn't change it. Video isn't supported yet.
 
 ## Targets
 Targets find the part of the file to change, so the rest stays intact.
