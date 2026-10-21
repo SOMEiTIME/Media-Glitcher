@@ -3,16 +3,24 @@
 # Pixel sorting: within each row (or line at an angle), runs of pixels whose
 # sort key is inside a threshold are sorted by that key, giving streaks.
 #
-# Unlike the other modes this works on decoded pixels. For now it reads and
-# writes binary PPM (P6), 8 or 16 bits per channel; the depth is kept.
+# Unlike the other modes this works on decoded pixels. Binary PPM (P6, 8 or
+# 16 bits per channel) is read and written directly, keeping its depth; JPEG,
+# PNG and BMP go through ffmpeg, and the output is the same format as the input.
 #
 # NumPy is only imported when pixels are sorted, so the rest of the tool stays
 # stdlib only.
 
-import math
+import math, subprocess
 import uncompressed
 
 KEYS = ("brightness", "hue", "saturation", "r", "g", "b")
+
+# ffmpeg encoder (and options) for each format, by its first bytes
+FFMPEG_FORMATS = (
+    (b"\xff\xd8", ["-c:v", "mjpeg", "-q:v", "2"]),
+    (b"\x89PNG", ["-c:v", "png"]),
+    (b"BM", ["-c:v", "bmp"]),
+)
 
 class PixelError(ValueError):
     pass
@@ -89,18 +97,42 @@ def pixel_sort(frame, key, low, high, angle=0):
 def decode(data):
     np = _numpy()
     try:
-        kind, fields, pos = uncompressed.ppm_header(data)
+        kind, fields, _ = uncompressed.ppm_header(data)
+        native = kind == b"P6" and fields[2] in (255, 65535)
     except uncompressed.FormatError:
-        kind = None
-    if kind != b"P6" or fields[2] not in (255, 65535):
-        raise PixelError("pixel sorting works on 8 or 16-bit binary PPM (P6) images for now")
+        native = False
+    encode = _ppm  # also for PGM, PBM and other PPM depths, which come back as 8-bit PPM
+    if not native:
+        if not data.startswith((b"P4", b"P5", b"P6")):
+            encoder = _ffmpeg_encoder(data)
+            encode = lambda frame: _ffmpeg(_ppm(frame), ["-f", "image2pipe", *encoder], ["-f", "ppm_pipe"])
+        data = _ffmpeg(data, ["-f", "image2pipe", "-c:v", "ppm", "-pix_fmt", "rgb24"])
+    kind, fields, pos = uncompressed.ppm_header(data)
     width, height, maxval = fields
     dtype = np.dtype(np.uint8 if maxval == 255 else ">u2")  # PPM samples are big-endian
     count = width * height * 3
     if len(data) < pos + count * dtype.itemsize:
         raise PixelError("PPM is shorter than its width and height say")
-    return np.frombuffer(data, dtype, count, pos).reshape(height, width, 3), _ppm
+    return np.frombuffer(data, dtype, count, pos).reshape(height, width, 3), encode
 
 def _ppm(frame):
     height, width = frame.shape[:2]
     return b"P6\n%d %d\n%d\n" % (width, height, _numpy().iinfo(frame.dtype).max) + frame.tobytes()
+
+def _ffmpeg_encoder(data):
+    for magic, encoder in FFMPEG_FORMATS:
+        if data.startswith(magic):
+            return encoder
+    raise PixelError("pixel sorting works on JPEG, PNG, BMP and PPM images")
+
+# runs ffmpeg with data on stdin and returns its stdout
+def _ffmpeg(data, output_args, input_args=()):
+    command = ["ffmpeg", "-v", "error", *input_args, "-i", "pipe:0", *output_args, "pipe:1"]
+    try:
+        result = subprocess.run(command, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError as error:
+        raise PixelError("pixel sorting this format needs ffmpeg: %s" % error)
+    if result.returncode != 0:
+        lines = result.stderr.decode("utf-8", "replace").strip().splitlines()
+        raise PixelError("ffmpeg failed: %s" % (lines[-1] if lines else "exit code %d" % result.returncode))
+    return result.stdout

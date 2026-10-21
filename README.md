@@ -68,9 +68,9 @@ Pixels whose key is inside the threshold get sorted, darkest (or lowest) first, 
  * ANGLE: `0` left to right, `90` top to bottom, `180` right to left (reversed), anything in between for diagonals
 
 ```
-python3 media_glitcher.py in.ppm out.ppm --pixel-sort brightness,0.25,0.8,90
+python3 media_glitcher.py in.jpg out.jpg --pixel-sort brightness,0.25,0.8,90
 ```
-Needs NumPy (`pip install numpy`). For now it only reads binary PPM (8 or 16-bit, kept as is); convert first, e.g. `ffmpeg -i in.jpg -pix_fmt rgb24 in.ppm`. It works on decoded pixels, so run it before byte operations, or the image will be broken. No randomness: `--seed` doesn't change it. Video isn't supported yet.
+Needs NumPy (`pip install numpy`). PPM is read directly (8 or 16-bit, kept as is). JPEG, PNG and BMP go through `ffmpeg` and come back in the same format (PNG loses its transparency). It works on decoded pixels, so run it before byte operations, or the image will be broken. No randomness: `--seed` doesn't change it. Video isn't supported yet.
 
 ## Targets
 Targets find the part of the file to change, so the rest stays intact.
