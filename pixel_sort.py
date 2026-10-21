@@ -4,7 +4,7 @@
 # sort key is inside a threshold are sorted by that key, giving streaks.
 #
 # Unlike the other modes this works on decoded pixels. For now it reads and
-# writes 8-bit binary PPM (P6) only.
+# writes binary PPM (P6), 8 or 16 bits per channel; the depth is kept.
 #
 # NumPy is only imported when pixels are sorted, so the rest of the tool stays
 # stdlib only.
@@ -25,11 +25,12 @@ def _numpy():
     return numpy
 
 #
-# The sort key of every pixel of an H x W x 3 uint8 frame, from 0 to 1
+# The sort key of every pixel of an H x W x 3 frame of unsigned ints
+# (uint8 or uint16, using the full range), from 0 to 1
 #
 def sort_key(frame, key):
     np = _numpy()
-    rgb = frame.astype(np.float64) / 255
+    rgb = frame.astype(np.float64) / np.iinfo(frame.dtype).max
     if key in ("r", "g", "b"):
         return rgb[..., "rgb".index(key)]
     if key == "brightness":
@@ -45,11 +46,12 @@ def sort_key(frame, key):
     return np.where(spread > 0, hue / 6, 0)
 
 #
-# Sorts the pixels of an H x W x 3 uint8 frame and returns a new frame of the
-# same shape. Pixels whose key is from low to high (0 to 1) can move; each
-# unbroken run of them along a line is sorted by key, lowest first. The lines
-# run at angle degrees: 0 left to right, 90 top to bottom, 180 right to left.
-# No randomness, so the same frame and settings always give the same output
+# Sorts the pixels of an H x W x 3 frame (as for sort_key) and returns a new
+# frame of the same shape and dtype. Pixels whose key is from low to high (0
+# to 1) can move; each unbroken run of them along a line is sorted by key,
+# lowest first. The lines run at angle degrees: 0 left to right, 90 top to
+# bottom, 180 right to left. No randomness, so the same frame and settings
+# always give the same output
 #
 def pixel_sort(frame, key, low, high, angle=0):
     np = _numpy()
@@ -80,8 +82,9 @@ def pixel_sort(frame, key, low, high, angle=0):
     return out.reshape(frame.shape)
 
 #
-# Decodes an image file's bytes into an H x W x 3 uint8 frame. Returns the
-# frame and a function that encodes a frame back into the same format
+# Decodes an image file's bytes into an H x W x 3 frame (uint8, or big-endian
+# uint16 for 16-bit). Returns the frame and a function that encodes a frame
+# back into the same format
 #
 def decode(data):
     np = _numpy()
@@ -89,13 +92,15 @@ def decode(data):
         kind, fields, pos = uncompressed.ppm_header(data)
     except uncompressed.FormatError:
         kind = None
-    if kind != b"P6" or fields[2] != 255:
-        raise PixelError("pixel sorting works on 8-bit binary PPM (P6) images for now")
-    width, height = fields[:2]
-    if len(data) < pos + width * height * 3:
+    if kind != b"P6" or fields[2] not in (255, 65535):
+        raise PixelError("pixel sorting works on 8 or 16-bit binary PPM (P6) images for now")
+    width, height, maxval = fields
+    dtype = np.dtype(np.uint8 if maxval == 255 else ">u2")  # PPM samples are big-endian
+    count = width * height * 3
+    if len(data) < pos + count * dtype.itemsize:
         raise PixelError("PPM is shorter than its width and height say")
-    return np.frombuffer(data, np.uint8, width * height * 3, pos).reshape(height, width, 3), _ppm
+    return np.frombuffer(data, dtype, count, pos).reshape(height, width, 3), _ppm
 
 def _ppm(frame):
     height, width = frame.shape[:2]
-    return b"P6\n%d %d\n255\n" % (width, height) + frame.tobytes()
+    return b"P6\n%d %d\n%d\n" % (width, height, _numpy().iinfo(frame.dtype).max) + frame.tobytes()

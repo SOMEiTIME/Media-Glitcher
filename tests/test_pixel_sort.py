@@ -110,9 +110,16 @@ class ImageTest(unittest.TestCase):
         with self.assertRaisesRegex(engine.GlitchError, "can't use pixel-sort: PPM is shorter"):
             engine.glitch(self.ppm[:-1], [op()])
 
+    def test_keeps_16_bit_depth(self):
+        # times 257 maps 0..255 onto 0..65535, so the keys and the sort are the same as in 8-bit
+        deep = (self.frame.astype(">u2") * 257).tobytes()
+        result = engine.glitch(b"P6\n30 20\n65535\n" + deep, [op(angle=90)])
+        expected = pixel_sort.pixel_sort(self.frame, "brightness", 0, 1, 90).astype(">u2") * 257
+        self.assertEqual(result, b"P6\n30 20\n65535\n" + expected.tobytes())
+
     def test_refuses_other_formats(self):
-        for data in (b"\xff\xd8" + bytes(100), b"P5\n3 2\n255\n" + bytes(6), b"P6\n3 2\n65535\n" + bytes(36)):
-            with self.assertRaisesRegex(engine.GlitchError, "works on 8-bit binary PPM"):
+        for data in (b"\xff\xd8" + bytes(100), b"P5\n3 2\n255\n" + bytes(6), b"P6\n3 2\n1023\n" + bytes(36)):
+            with self.assertRaisesRegex(engine.GlitchError, "works on 8 or 16-bit binary PPM"):
                 engine.glitch(data, [op()])
 
 if __name__ == "__main__":
