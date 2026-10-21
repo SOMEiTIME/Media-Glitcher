@@ -117,6 +117,13 @@ class ImageTest(unittest.TestCase):
         with self.assertRaisesRegex(engine.GlitchError, "can't use pixel-sort: PPM is shorter"):
             engine.glitch(self.ppm[:-1], [op()])
 
+    def test_keeps_16_bit_depth(self):
+        # times 257 maps 0..255 onto 0..65535, so the keys and the sort are the same as in 8-bit
+        deep = (self.frame.astype(">u2") * 257).tobytes()
+        result = engine.glitch(b"P6\n30 20\n65535\n" + deep, [op(angle=90)])
+        expected = pixel_sort.pixel_sort(self.frame, "brightness", 0, 1, 90).astype(">u2") * 257
+        self.assertEqual(result, b"P6\n30 20\n65535\n" + expected.tobytes())
+
     @unittest.skipUnless(ffmpeg_works(), "needs a working ffmpeg")
     def test_jpeg_stays_jpeg(self):
         with open(os.path.join(HERE, "fixtures", "baseline.jpg"), "rb") as f:

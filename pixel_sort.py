@@ -3,9 +3,9 @@
 # Pixel sorting: within each row (or line at an angle), runs of pixels whose
 # sort key is inside a threshold are sorted by that key, giving streaks.
 #
-# Unlike the other modes this works on decoded pixels. Binary PPM (P6, 8-bit)
-# is read and written directly; JPEG, PNG and BMP go through ffmpeg, and the
-# output is the same format as the input.
+# Unlike the other modes this works on decoded pixels. Binary PPM (P6, 8 or
+# 16 bits per channel) is read and written directly, keeping its depth; JPEG,
+# PNG and BMP go through ffmpeg, and the output is the same format as the input.
 #
 # NumPy is only imported when pixels are sorted, so the rest of the tool stays
 # stdlib only.
@@ -33,11 +33,12 @@ def _numpy():
     return numpy
 
 #
-# The sort key of every pixel of an H x W x 3 uint8 frame, from 0 to 1
+# The sort key of every pixel of an H x W x 3 frame of unsigned ints
+# (uint8 or uint16, using the full range), from 0 to 1
 #
 def sort_key(frame, key):
     np = _numpy()
-    rgb = frame.astype(np.float64) / 255
+    rgb = frame.astype(np.float64) / np.iinfo(frame.dtype).max
     if key in ("r", "g", "b"):
         return rgb[..., "rgb".index(key)]
     if key == "brightness":
@@ -53,11 +54,12 @@ def sort_key(frame, key):
     return np.where(spread > 0, hue / 6, 0)
 
 #
-# Sorts the pixels of an H x W x 3 uint8 frame and returns a new frame of the
-# same shape. Pixels whose key is from low to high (0 to 1) can move; each
-# unbroken run of them along a line is sorted by key, lowest first. The lines
-# run at angle degrees: 0 left to right, 90 top to bottom, 180 right to left.
-# No randomness, so the same frame and settings always give the same output
+# Sorts the pixels of an H x W x 3 frame (as for sort_key) and returns a new
+# frame of the same shape and dtype. Pixels whose key is from low to high (0
+# to 1) can move; each unbroken run of them along a line is sorted by key,
+# lowest first. The lines run at angle degrees: 0 left to right, 90 top to
+# bottom, 180 right to left. No randomness, so the same frame and settings
+# always give the same output
 #
 def pixel_sort(frame, key, low, high, angle=0):
     np = _numpy()
@@ -88,31 +90,34 @@ def pixel_sort(frame, key, low, high, angle=0):
     return out.reshape(frame.shape)
 
 #
-# Decodes an image file's bytes into an H x W x 3 uint8 frame. Returns the
-# frame and a function that encodes a frame back into the same format
+# Decodes an image file's bytes into an H x W x 3 frame (uint8, or big-endian
+# uint16 for 16-bit). Returns the frame and a function that encodes a frame
+# back into the same format
 #
 def decode(data):
     np = _numpy()
     try:
         kind, fields, _ = uncompressed.ppm_header(data)
-        native = kind == b"P6" and fields[2] == 255
+        native = kind == b"P6" and fields[2] in (255, 65535)
     except uncompressed.FormatError:
         native = False
-    encode = _ppm  # also for PGM, PBM and 16-bit PPM, which come back as 8-bit PPM
+    encode = _ppm  # also for PGM, PBM and other PPM depths, which come back as 8-bit PPM
     if not native:
         if not data.startswith((b"P4", b"P5", b"P6")):
             encoder = _ffmpeg_encoder(data)
             encode = lambda frame: _ffmpeg(_ppm(frame), ["-f", "image2pipe", *encoder], ["-f", "ppm_pipe"])
         data = _ffmpeg(data, ["-f", "image2pipe", "-c:v", "ppm", "-pix_fmt", "rgb24"])
     kind, fields, pos = uncompressed.ppm_header(data)
-    width, height = fields[:2]
-    if len(data) < pos + width * height * 3:
+    width, height, maxval = fields
+    dtype = np.dtype(np.uint8 if maxval == 255 else ">u2")  # PPM samples are big-endian
+    count = width * height * 3
+    if len(data) < pos + count * dtype.itemsize:
         raise PixelError("PPM is shorter than its width and height say")
-    return np.frombuffer(data, np.uint8, width * height * 3, pos).reshape(height, width, 3), encode
+    return np.frombuffer(data, dtype, count, pos).reshape(height, width, 3), encode
 
 def _ppm(frame):
     height, width = frame.shape[:2]
-    return b"P6\n%d %d\n255\n" % (width, height) + frame.tobytes()
+    return b"P6\n%d %d\n%d\n" % (width, height, _numpy().iinfo(frame.dtype).max) + frame.tobytes()
 
 def _ffmpeg_encoder(data):
     for magic, encoder in FFMPEG_FORMATS:
