@@ -6,6 +6,7 @@
 # way this tool worked. Byte operations work on the bytes directly, so their
 # spacing and header are exact sizes. Frame operations (iframe-drop,
 # pframe-repeat) datamosh an AVI by removing or repeating whole video frames.
+# Pixel operations (pixel-sort) decode an image and move its pixels.
 # All kinds can be mixed in one run and are applied in order.
 #
 # A target limits byte operations to the parts of a format that are safe to
@@ -14,13 +15,14 @@
 # This module has no dependency on the CLI so other programs and tests can use it.
 
 import io, itertools, random
-import avi, byte_ops, jpeg, uncompressed
+import avi, byte_ops, jpeg, pixel_sort, uncompressed
 from media import media
 
 DEFAULT_HEADER_LENGTH = 15   # protected lines in line mode; 15 is good for video, 0 may suit images
 DEFAULT_HEADER_BYTES = 1024  # protected bytes in byte mode; keeps most file signatures and basic headers
 
-# Each operation's parameters in command line order, as (name, type, smallest allowed value)
+# Each operation's parameters in command line order, as (name, type, smallest allowed value).
+# A tuple of strings as the type means one of those strings
 OPERATIONS = {
     "swap": (("interval", int, 0), ("flavour", int, None)),
     "corrupt": (("interval", int, 0), ("flavour", int, None)),
@@ -30,11 +32,13 @@ OPERATIONS = {
     "repeat": (("size", int, 1), ("every", int, 1)),
     "iframe-drop": (("keep", int, 1),),
     "pframe-repeat": (("every", int, 1), ("count", int, 1)),
+    "pixel-sort": (("key", pixel_sort.KEYS, None), ("low", float, 0), ("high", float, 0), ("angle", float, None)),
 }
 LINE_FUNCTIONS = {"swap": media.glitch_random_swap, "corrupt": media.glitch_corrupt}
 BYTE_FUNCTIONS = {"byte-swap": byte_ops.byte_swap, "byte-corrupt": byte_ops.byte_corrupt,
                   "bitflip": byte_ops.bitflip, "repeat": byte_ops.repeat}
 FRAME_FUNCTIONS = {"iframe-drop": avi.iframe_drop, "pframe-repeat": avi.pframe_repeat}
+PIXEL_FUNCTIONS = {"pixel-sort": pixel_sort.pixel_sort}
 
 # Format targets, as (find the ranges to glitch, repair the file afterwards).
 # The "all" target is simply everything after header_bytes
@@ -59,6 +63,9 @@ def is_line_operation(op):
 def is_frame_operation(op):
     return op["type"] in FRAME_FUNCTIONS
 
+def is_pixel_operation(op):
+    return op["type"] in PIXEL_FUNCTIONS
+
 def is_byte_operation(op):
     return op["type"] in BYTE_FUNCTIONS
 
@@ -81,13 +88,17 @@ def glitch(data, operations, header_length=DEFAULT_HEADER_LENGTH, header_bytes=D
             data = _line_pass(data, list(group), header_length, rng)
         elif kind == "frame":
             data = _frame_pass(data, list(group), rng)
+        elif kind == "pixel":
+            data = _pixel_pass(data, list(group))
         else:
             ranges, repair = _target(data, target, header_bytes)
             data = _byte_pass(data, list(group), ranges, repair, rng)
     return data
 
 def _kind(op):
-    return "line" if is_line_operation(op) else "frame" if is_frame_operation(op) else "byte"
+    if is_line_operation(op):
+        return "line"
+    return "frame" if is_frame_operation(op) else "pixel" if is_pixel_operation(op) else "byte"
 
 def _line_pass(data, operations, header_length, rng):
     # latin-1 maps bytes 1:1 to characters, and newline="" splits on \n, \r and \r\n
@@ -108,6 +119,16 @@ def _frame_pass(data, operations, rng):
     for op in operations:
         FRAME_FUNCTIONS[op["type"]](frames, rng, *_values(op))
     return avi.join(before, frames, after)
+
+# pixel operations use no random draws, so line and byte output stays the same around them
+def _pixel_pass(data, operations):
+    try:
+        frame, encode = pixel_sort.decode(data)
+        for op in operations:
+            frame = PIXEL_FUNCTIONS[op["type"]](frame, *_values(op))
+        return encode(frame)
+    except pixel_sort.PixelError as error:
+        raise GlitchError("can't use %s: %s" % (operations[0]["type"], error))
 
 # the format target "auto" picks from the file's first bytes; "all" if it's none of them
 def detect_target(data):

@@ -33,11 +33,24 @@ def bmp_pixels(data):
     return _checked(data, offset, offset + row * abs(height))
 
 #
-# ppm-pixels target: the pixel data of a binary PPM (P6), PGM (P5) or PBM (P4).
-# The header is the magic number, width, height and (except for PBM) the
-# maximum value, separated by whitespace and # comments
+# ppm-pixels target: the pixel data of a binary PPM (P6), PGM (P5) or PBM (P4)
 #
 def ppm_pixels(data):
+    kind, fields, pos = ppm_header(data)
+    width, height = fields[:2]
+    if kind == b"P4":
+        size = (width + 7) // 8 * height
+    else:
+        channels = 3 if kind == b"P6" else 1
+        size = width * height * channels * (2 if fields[2] > 255 else 1)
+    return _checked(data, pos, pos + size)
+
+#
+# Reads a binary PPM, PGM or PBM header: the magic number, width, height and
+# (except for PBM) the maximum value, separated by whitespace and # comments.
+# Returns (magic number, the numbers, where the data starts)
+#
+def ppm_header(data):
     kind = data[:2]
     if kind not in (b"P4", b"P5", b"P6"):
         raise FormatError("not a binary PPM, PGM or PBM (it doesn't start with P4, P5 or P6)")
@@ -55,14 +68,7 @@ def ppm_pixels(data):
         if start == pos:
             raise FormatError("header has a missing or invalid number at byte %d" % start)
         fields.append(int(data[start:pos]))
-    pos += 1  # exactly one whitespace byte before the data
-    width, height = fields[:2]
-    if kind == b"P4":
-        size = (width + 7) // 8 * height
-    else:
-        channels = 3 if kind == b"P6" else 1
-        size = width * height * channels * (2 if fields[2] > 255 else 1)
-    return _checked(data, pos, pos + size)
+    return kind, fields, pos + 1  # exactly one whitespace byte before the data
 
 #
 # wav-samples target: the data chunk of an uncompressed (PCM or float) WAV

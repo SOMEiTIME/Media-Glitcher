@@ -48,6 +48,10 @@ def check_operation(op):
     if set(op) != {"type", *names}:
         raise PresetError("needs exactly %s" % ", ".join(names))
     for name, kind, minimum in params:
+        if isinstance(kind, tuple):
+            if op[name] not in kind:
+                raise PresetError("%s must be one of %s" % (name, ", ".join(kind)))
+            continue
         check, type_name = TYPE_CHECKS[kind]
         if not check(op[name]):
             raise PresetError("%s must be %s" % (name, type_name))
