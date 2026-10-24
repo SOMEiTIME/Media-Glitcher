@@ -11,7 +11,7 @@ Four modes, mix them in one run:
  * **Line mode**: swaps and corrupts "lines" (split at newline bytes). Random lengths, so unpredictable results.
  * **Byte mode**: exact byte positions and sizes, so you control the damage.
  * **Frame mode**: datamoshes MPEG-4 AVI video.
- * **Pixel mode**: pixel sorts images.
+ * **Pixel mode**: pixel sorts images and video.
 
 Operations run in the order given, and can be repeated. With none given, the `default` preset runs. `-h` has the details.
 
@@ -32,7 +32,7 @@ Operations run in the order given, and can be repeated. With none given, the `de
  * `--iframe-drop KEEP` keep the first KEEP keyframes, remove the rest
  * `--pframe-repeat EVERY,COUNT` every EVERY frames, repeat a P-frame COUNT more times
 
-### Pixel mode (images)
+### Pixel mode (images, video)
  * `--pixel-sort KEY,LOW,HIGH,ANGLE` sort runs of pixels whose KEY is from LOW to HIGH (0 to 1) by that key, along lines at ANGLE degrees
 
 See [Pixel sort](#pixel-sort).
@@ -70,7 +70,7 @@ Pixels whose key is inside the threshold get sorted, darkest (or lowest) first, 
 ```
 python3 media_glitcher.py in.jpg out.jpg --pixel-sort brightness,0.25,0.8,90
 ```
-Needs NumPy (`pip install numpy`). PPM is read directly (8 or 16-bit, kept as is). JPEG, PNG and BMP go through `ffmpeg` and come back in the same format (PNG loses its transparency). It works on decoded pixels, so run it before byte operations, or the image will be broken. No randomness: `--seed` doesn't change it. Video isn't supported yet.
+Needs NumPy (`pip install numpy`). PPM is read directly (8 or 16-bit, kept as is). JPEG, PNG and BMP go through `ffmpeg` and come back in the same format (PNG loses its transparency). MP4 and MOV come back as H.264 MP4, AVI as MPEG-4 AVI (so frame mode still works on it); audio is kept. Video is slow, about half a second per 1080p frame. It works on decoded pixels, so run it before byte operations, or the image will be broken. No randomness: `--seed` doesn't change it.
 
 ## Targets
 Targets find the part of the file to change, so the rest stays intact.

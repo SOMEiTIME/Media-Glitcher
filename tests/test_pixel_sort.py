@@ -2,7 +2,7 @@ import os, subprocess, sys, tempfile, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-import engine, media_glitcher, pixel_sort, presets
+import avi, engine, media_glitcher, pixel_sort, presets
 
 try:
     import numpy as np
@@ -130,8 +130,8 @@ class ImageTest(unittest.TestCase):
             data = f.read()
         result = engine.glitch(data, [op(low=0.3, high=0.8)])
         self.assertTrue(result.startswith(b"\xff\xd8"))
-        frame, _ = pixel_sort.decode(result)
-        self.assertEqual(frame.shape, pixel_sort.decode(data)[0].shape)
+        [frame], _ = pixel_sort.decode(result)
+        self.assertEqual(frame.shape, pixel_sort.decode(data)[0][0].shape)
 
     @unittest.skipIf(ffmpeg_works(), "only for when ffmpeg is missing or broken")
     def test_explains_missing_ffmpeg(self):
@@ -139,8 +139,41 @@ class ImageTest(unittest.TestCase):
             engine.glitch(b"\x89PNG\r\n\x1a\n" + bytes(100), [op()])
 
     def test_refuses_unknown_formats(self):
-        with self.assertRaisesRegex(engine.GlitchError, "works on JPEG, PNG, BMP and PPM"):
-            engine.glitch(b"GIF89a" + bytes(100), [op()])
+        for data in (b"GIF89a" + bytes(100), b"\0\0\0\x18ftypheic" + bytes(100)):
+            with self.assertRaisesRegex(engine.GlitchError, "works on JPEG, PNG, BMP and PPM images, and MP4"):
+                engine.glitch(data, [op()])
+
+@unittest.skipUnless(np and ffmpeg_works(), "needs NumPy and a working ffmpeg")
+class VideoTest(unittest.TestCase):
+    # codec, width, height and frame count of each stream, e.g. "mpeg4,64,48,20"
+    def streams(self, data):
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(data)
+            f.flush()
+            result = subprocess.run(["ffprobe", "-v", "error", "-count_frames", "-show_entries",
+                                     "stream=codec_name,width,height,nb_read_frames", "-of", "csv=p=0", f.name],
+                                    stdout=subprocess.PIPE, check=True)
+        return result.stdout.decode().split()
+
+    def test_avi_stays_mpeg4_avi(self):
+        with open(os.path.join(HERE, "fixtures", "mpeg4.avi"), "rb") as f:
+            data = f.read()
+        result = engine.glitch(data, [op(low=0.3, high=0.8)])
+        self.assertEqual(self.streams(result), ["mpeg4,64,48,20", "pcm_u8,16"])
+        # frame operations still work after a pixel sort
+        engine.glitch(data, [op(), {"type": "iframe-drop", "keep": 1}])
+
+    def test_mp4_keeps_frames_and_audio(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = os.path.join(folder, "in.mp4")
+            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=64x48:rate=10:duration=1",
+                            "-f", "lavfi", "-i", "sine=duration=1", "-c:v", "mpeg4", "-c:a", "aac", source], check=True)
+            with open(source, "rb") as f:
+                data = f.read()
+        result = engine.glitch(data, [op(angle=90)])
+        self.assertEqual(result[4:8], b"ftyp")
+        self.assertEqual(self.streams(result)[0], "h264,64,48,10")
+        self.assertTrue(self.streams(result)[1].startswith("aac,"))
 
 if __name__ == "__main__":
     unittest.main()
