@@ -101,15 +101,15 @@ def pixel_sort(frame, key, low, high, angle=0):
 #
 # Decodes a file's bytes into H x W x 3 frames (uint8, or big-endian uint16 for
 # 16-bit PPM). Returns the frames (an iterable: one for an image, streamed for
-# video) and a function that encodes an iterable of frames back into the same
-# format
+# video), how many there are (None if unknown) and a function that encodes an
+# iterable of frames back into the same format
 #
 def decode(data):
     output = _video_output(data)
     if output:
         return _video(data, output)
     frame, encode = _image(data)
-    return [frame], lambda frames: encode(*frames)
+    return [frame], 1, lambda frames: encode(*frames)
 
 def _image(data):
     np = _numpy()
@@ -161,6 +161,11 @@ def _video(data, output):
     source, result = os.path.join(folder.name, "in"), os.path.join(folder.name, "out")
     with open(source, "wb") as f:
         f.write(data)
+    try:
+        rate, count = _probe(source)
+    except PixelError:
+        folder.cleanup()
+        raise
 
     def frames():
         decoder = _start(["-i", source, "-map", "0:v:0", "-f", "image2pipe", "-c:v", "ppm", "-pix_fmt", "rgb24",
@@ -183,7 +188,7 @@ def _video(data, output):
     def encode(frames):
         encoder = None
         try:
-            encoder = _start(["-f", "ppm_pipe", "-framerate", _frame_rate(source), "-i", "pipe:0", "-i", source,
+            encoder = _start(["-f", "ppm_pipe", "-framerate", rate, "-i", "pipe:0", "-i", source,
                               "-map", "0:v", "-map", "1:a?", "-c:a", "copy", *output, "-y", result],
                              folder.name, stdin=subprocess.PIPE)
             try:
@@ -202,12 +207,13 @@ def _video(data, output):
             folder.cleanup()
 
     decoded = frames()
-    return decoded, encode
+    return decoded, count, encode
 
-# the video's frame rate as ffprobe gives it, e.g. "30/1"; the average if known, as phones vary it
-def _frame_rate(source):
-    command = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=avg_frame_rate,r_frame_rate",
-               "-of", "default=noprint_wrappers=1", source]
+# the video's frame rate as ffprobe gives it, e.g. "30/1" (the average if known, as
+# phones vary it), and its frame count, or None if the file doesn't say
+def _probe(source):
+    command = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+               "stream=avg_frame_rate,r_frame_rate,nb_frames", "-of", "default=noprint_wrappers=1", source]
     try:
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except OSError as error:
@@ -215,9 +221,11 @@ def _frame_rate(source):
     if result.returncode != 0:
         raise _failed("ffprobe", result.stderr, result.returncode)
     fields = dict(line.split("=", 1) for line in result.stdout.decode("ascii", "replace").split() if "=" in line)
+    count = fields.get("nb_frames", "")
+    count = int(count) if count.isdigit() else None
     for name in ("avg_frame_rate", "r_frame_rate"):
         if fields.get(name, "0/0") != "0/0":
-            return fields[name]
+            return fields[name], count
     raise PixelError("ffprobe found no video stream")
 
 # starts ffmpeg with its messages going to a log file in folder, so a full pipe can't stall it

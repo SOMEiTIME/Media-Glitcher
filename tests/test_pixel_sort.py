@@ -1,4 +1,4 @@
-import os, subprocess, sys, tempfile, unittest
+import io, os, subprocess, sys, tempfile, unittest, unittest.mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -113,6 +113,36 @@ class ImageTest(unittest.TestCase):
         self.assertEqual(result, engine.glitch(self.ppm, ops, seed=3, target="ppm-pixels"))
         self.assertEqual(len(result), len(b"P6\n30 20\n255\n") + self.frame.size)
 
+    def test_reports_progress_for_the_one_frame(self):
+        calls = []
+        engine.glitch(self.ppm, [op()], progress=lambda done, total: calls.append((done, total)))
+        self.assertEqual(calls, [(1, 1)])
+
+    def test_progress_line_is_erased(self):
+        stderr = io.StringIO()
+        with unittest.mock.patch("sys.stderr", stderr):
+            progress = media_glitcher.Progress()
+            progress(1, 1)  # an image shows nothing
+            self.assertEqual(stderr.getvalue(), "")
+            progress(9, 10)
+            progress(10, None)
+            progress.clear()
+        self.assertEqual(stderr.getvalue(), "\rpixel sorting frame 9/10\rpixel sorting frame 10/?"
+                                            "\r%s\r" % (" " * len("pixel sorting frame 10/?")))
+
+    def test_error_comes_after_the_progress_line_is_erased(self):
+        def fail_midway(*args):
+            args[-1](1, 2)
+            raise engine.GlitchError("broken")
+        stderr = io.StringIO()
+        stderr.isatty = lambda: True
+        with unittest.mock.patch("sys.stderr", stderr), unittest.mock.patch("sys.stdout", io.StringIO()), \
+                unittest.mock.patch("engine.glitch", fail_midway):
+            with self.assertRaises(SystemExit):
+                media_glitcher.main([os.path.join(HERE, "fixtures", "mpeg4.avi"), os.path.join(self.dir.name, "out"),
+                                     "--pixel-sort", "brightness,0,1,0"])
+        self.assertTrue(stderr.getvalue().endswith(" \rerror: broken\n"), stderr.getvalue())
+
     def test_refuses_short_ppm(self):
         with self.assertRaisesRegex(engine.GlitchError, "can't use pixel-sort: PPM is shorter"):
             engine.glitch(self.ppm[:-1], [op()])
@@ -130,7 +160,7 @@ class ImageTest(unittest.TestCase):
             data = f.read()
         result = engine.glitch(data, [op(low=0.3, high=0.8)])
         self.assertTrue(result.startswith(b"\xff\xd8"))
-        [frame], _ = pixel_sort.decode(result)
+        [frame], _, _ = pixel_sort.decode(result)
         self.assertEqual(frame.shape, pixel_sort.decode(data)[0][0].shape)
 
     @unittest.skipIf(ffmpeg_works(), "only for when ffmpeg is missing or broken")
@@ -160,6 +190,9 @@ class VideoTest(unittest.TestCase):
             data = f.read()
         result = engine.glitch(data, [op(low=0.3, high=0.8)])
         self.assertEqual(self.streams(result), ["mpeg4,64,48,20", "pcm_u8,16"])
+        calls = []
+        engine.glitch(data, [op()], progress=lambda done, total: calls.append((done, total)))
+        self.assertEqual(calls, [(done, 20) for done in range(1, 21)])
         # frame operations still work after a pixel sort
         engine.glitch(data, [op(), {"type": "iframe-drop", "keep": 1}])
 

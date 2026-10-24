@@ -2,7 +2,7 @@
 
 # Command line entry point for glitching media
 
-import argparse, os
+import argparse, os, sys
 import engine, pixel_sort, presets
 
 DEFAULT_PRESET = "default" # run when no operations are given
@@ -100,8 +100,29 @@ def build_parser():
                         help="part of the file byte operations change: all is everything after --header-bytes, "
                              "auto picks one from the file type (default: %s)" % engine.DEFAULT_TARGET)
     parser.add_argument("--seed", type=int, help="random seed, for reproducible output")
-    parser.add_argument("-q", "--quiet", action="store_true", help="don't print the file names")
+    parser.add_argument("-q", "--quiet", action="store_true", help="don't print the file names or video progress")
     return parser
+
+#
+# Shows how far a video's pixel sort has got on one line of stderr, rewritten
+# for each frame and erased when done. Images (one frame) show nothing
+#
+class Progress:
+    def __init__(self):
+        self.width = 0
+
+    def __call__(self, done, total):
+        if total == 1:
+            return
+        line = "pixel sorting frame %d/%s" % (done, total or "?")
+        self.width = max(self.width, len(line))
+        sys.stderr.write("\r" + line)
+        sys.stderr.flush()
+
+    def clear(self):
+        if self.width:
+            sys.stderr.write("\r%s\r" % (" " * self.width))
+            sys.stderr.flush()
 
 def main(argv=None):
     parser = build_parser()
@@ -165,8 +186,14 @@ def main(argv=None):
             data = file.read()
     except OSError as error:
         parser.exit(1, "error: %s\n" % error)
+    # progress only goes to a terminal, so piped or logged output stays clean
+    progress = Progress() if not args.quiet and sys.stderr.isatty() else None
     try:
-        data = engine.glitch(data, operations, header_length, header_bytes, seed, target)
+        try:
+            data = engine.glitch(data, operations, header_length, header_bytes, seed, target, progress)
+        finally:
+            if progress:
+                progress.clear()  # before any error, so it isn't printed on the progress line
     except engine.GlitchError as error:
         parser.exit(1, "error: %s\n" % error)
     with open(args.output_file, "wb") as file:
