@@ -122,11 +122,13 @@ def _frame_pass(data, operations, rng):
 
 # pixel operations use no random draws, so line and byte output stays the same around them
 def _pixel_pass(data, operations):
-    try:
-        frame, encode = pixel_sort.decode(data)
+    def glitch_frame(frame):
         for op in operations:
             frame = PIXEL_FUNCTIONS[op["type"]](frame, *_values(op))
-        return encode(frame)
+        return frame
+    try:
+        frames, encode = pixel_sort.decode(data)
+        return encode(map(glitch_frame, frames))
     except pixel_sort.PixelError as error:
         raise GlitchError("can't use %s: %s" % (operations[0]["type"], error))
 
