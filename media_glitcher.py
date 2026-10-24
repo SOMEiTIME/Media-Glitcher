@@ -2,7 +2,7 @@
 
 # Command line entry point for glitching media
 
-import argparse, os, sys
+import argparse, os, signal, sys
 import engine, pixel_sort, presets
 
 DEFAULT_PRESET = "default" # run when no operations are given
@@ -199,5 +199,17 @@ def main(argv=None):
     with open(args.output_file, "wb") as file:
         file.write(data)
 
+#
+# Runs main, exiting quietly on Ctrl-C (no traceback) and treating SIGTERM
+# (e.g. from timeout) like it, so ffmpeg is stopped and temporary files are
+# removed either way. Not part of main, so importing this changes no signals
+#
+def run():
+    signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(128 + signum))
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(128 + signal.SIGINT)
+
 if __name__ == "__main__":
-    main()
+    run()
