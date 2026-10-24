@@ -1,4 +1,4 @@
-import io, os, subprocess, sys, tempfile, unittest, unittest.mock
+import io, os, signal, subprocess, sys, tempfile, time, unittest, unittest.mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -207,6 +207,31 @@ class VideoTest(unittest.TestCase):
         self.assertEqual(result[4:8], b"ftyp")
         self.assertEqual(self.streams(result)[0], "h264,64,48,10")
         self.assertTrue(self.streams(result)[1].startswith("aac,"))
+
+    # runs the CLI on a long video and sends it a signal once it's started; returns
+    # its exit code, its stderr and what it left in its temporary folder and output path
+    def interrupt(self, signum):
+        with tempfile.TemporaryDirectory() as folder:
+            source, out, temp = (os.path.join(folder, name) for name in ("in.avi", "out.avi", "tmp"))
+            os.mkdir(temp)
+            subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "testsrc=size=320x240:rate=30:duration=30",
+                            "-c:v", "mpeg4", source], check=True)
+            process = subprocess.Popen([sys.executable, os.path.join(os.path.dirname(HERE), "media_glitcher.py"), source,
+                                        out, "-q", "--pixel-sort", "brightness,0,1,0"],
+                                       env=dict(os.environ, TMPDIR=temp), stderr=subprocess.PIPE)
+            deadline = time.time() + 30
+            while not os.listdir(temp) and time.time() < deadline:
+                time.sleep(0.05)
+            time.sleep(0.5)  # into the frames
+            process.send_signal(signum)
+            _, stderr = process.communicate(timeout=30)
+            return process.returncode, stderr.decode(), os.listdir(temp), os.path.exists(out)
+
+    def test_ctrl_c_exits_quietly_and_cleans_up(self):
+        self.assertEqual(self.interrupt(signal.SIGINT), (130, "", [], False))
+
+    def test_sigterm_cleans_up(self):
+        self.assertEqual(self.interrupt(signal.SIGTERM), (143, "", [], False))
 
 if __name__ == "__main__":
     unittest.main()
