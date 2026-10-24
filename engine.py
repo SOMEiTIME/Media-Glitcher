@@ -76,10 +76,12 @@ def _values(op):
 #
 # Glitches data (bytes) with a list of operations, e.g.
 # [{"type": "byte-swap", "size": 64, "every": 5000}], and returns the new bytes.
-# The same seed and operations always give the same output
+# The same seed and operations always give the same output. progress, if given,
+# is called as progress(done, total) after pixel operations finish each frame
+# (total is None if unknown)
 #
 def glitch(data, operations, header_length=DEFAULT_HEADER_LENGTH, header_bytes=DEFAULT_HEADER_BYTES, seed=None,
-           target=DEFAULT_TARGET):
+           target=DEFAULT_TARGET, progress=None):
     rng = random.Random(seed)
     data = bytes(data)
     # consecutive operations of one kind share one pass (for line operations, one split, the way they always ran)
@@ -89,7 +91,7 @@ def glitch(data, operations, header_length=DEFAULT_HEADER_LENGTH, header_bytes=D
         elif kind == "frame":
             data = _frame_pass(data, list(group), rng)
         elif kind == "pixel":
-            data = _pixel_pass(data, list(group))
+            data = _pixel_pass(data, list(group), progress)
         else:
             ranges, repair = _target(data, target, header_bytes)
             data = _byte_pass(data, list(group), ranges, repair, rng)
@@ -121,14 +123,16 @@ def _frame_pass(data, operations, rng):
     return avi.join(before, frames, after)
 
 # pixel operations use no random draws, so line and byte output stays the same around them
-def _pixel_pass(data, operations):
-    def glitch_frame(frame):
+def _pixel_pass(data, operations, progress):
+    def glitch_frame(done, frame):
         for op in operations:
             frame = PIXEL_FUNCTIONS[op["type"]](frame, *_values(op))
+        if progress:
+            progress(done, count)
         return frame
     try:
-        frames, encode = pixel_sort.decode(data)
-        return encode(map(glitch_frame, frames))
+        frames, count, encode = pixel_sort.decode(data)
+        return encode(itertools.starmap(glitch_frame, enumerate(frames, 1)))
     except pixel_sort.PixelError as error:
         raise GlitchError("can't use %s: %s" % (operations[0]["type"], error))
 

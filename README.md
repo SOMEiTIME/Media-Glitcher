@@ -70,7 +70,7 @@ Pixels whose key is inside the threshold get sorted, darkest (or lowest) first, 
 ```
 python3 media_glitcher.py in.jpg out.jpg --pixel-sort brightness,0.25,0.8,90
 ```
-Needs NumPy (`pip install numpy`). PPM is read directly (8 or 16-bit, kept as is). JPEG, PNG and BMP go through `ffmpeg` and come back in the same format (PNG loses its transparency). MP4 and MOV come back as H.264 MP4, AVI as MPEG-4 AVI (so frame mode still works on it); audio is kept. Video is slow, about half a second per 1080p frame. It works on decoded pixels, so run it before byte operations, or the image will be broken. No randomness: `--seed` doesn't change it.
+Needs NumPy (`pip install numpy`). PPM is read directly (8 or 16-bit, kept as is). JPEG, PNG and BMP go through `ffmpeg` and come back in the same format (PNG loses its transparency). MP4 and MOV come back as H.264 MP4, AVI as MPEG-4 AVI (so frame mode still works on it); audio is kept. Video is slow, about half a second per 1080p frame, and shows a frame counter while it runs. It works on decoded pixels, so run it before byte operations, or the image will be broken. No randomness: `--seed` doesn't change it.
 
 ## Targets
 Targets find the part of the file to change, so the rest stays intact.
