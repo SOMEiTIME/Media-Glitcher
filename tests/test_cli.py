@@ -59,7 +59,7 @@ class CliTest(unittest.TestCase):
     def test_save_then_load_round_trip(self):
         saved = self.path("mine.json")
         main(["--save-preset", saved, "--swap", "50,2", "--corrupt", "300,5",
-                             "--seed", "9", "--header-length", "0", "--description", "test", "-q"])
+              "--seed", "9", "--header-length", "0", "--description", "test", "-q"])
         loaded = presets.load(saved)
         self.assertEqual(loaded["operations"], [swap(50, 2), {"type": "corrupt", "interval": 300, "flavour": 5}])
         self.assertEqual((loaded["seed"], loaded["header_length"], loaded["description"]), (9, 0, "test"))
@@ -138,7 +138,7 @@ class ByteModeTest(unittest.TestCase):
             with open(source, "wb") as f:
                 f.write(self.data)
             main([source, out, "-q", "--byte-swap", "64,1000", "--bitflip", "0.0005",
-                                 "--header-bytes", "2048", "--seed", "1", "--save-preset", saved])
+                  "--header-bytes", "2048", "--seed", "1", "--save-preset", saved])
             loaded = presets.load(saved)
             self.assertEqual((loaded["header_bytes"], "header_length" in loaded), (2048, False))
             with open(out, "rb") as f:

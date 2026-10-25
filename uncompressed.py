@@ -34,9 +34,11 @@ def bmp_header(data):
     width = int.from_bytes(data[18:22], "little", signed=True)
     height = int.from_bytes(data[22:26], "little", signed=True)
     bits = int.from_bytes(data[28:30], "little")
-    if int.from_bytes(data[30:34], "little") not in (0, 3, 6):  # plain, or plain with bit masks
+    compression = int.from_bytes(data[30:34], "little")
+    if compression not in (0, 3, 6):  # plain, or plain with bit masks
         raise FormatError("compressed BMPs aren't supported")
-    return offset, width, height, bits, (bits * width + 31) // 32 * 4  # rows are padded to 4 bytes
+    row = (bits * width + 31) // 32 * 4  # rows are padded to 4 bytes
+    return offset, width, height, bits, row
 
 #
 # ppm-pixels target: the pixel data of a binary PPM (P6), PGM (P5) or PBM (P4)
