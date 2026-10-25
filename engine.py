@@ -173,7 +173,7 @@ def _target(data, target, header_bytes):
 def _byte_pass(data, operations, ranges, repair, rng):
     part = bytearray(b"".join(data[start:end] for start, end in ranges))
     for op in operations:
-        BYTE_FUNCTIONS[op["type"]](part, 0, rng, *_values(op))
+        BYTE_FUNCTIONS[op["type"]](part, rng, *_values(op))
     data = bytearray(data)
     pos = 0
     for start, end in ranges:
