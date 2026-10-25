@@ -16,6 +16,14 @@ class FormatError(ValueError):
 # bmp-pixels target: the pixel array of an uncompressed BMP
 #
 def bmp_pixels(data):
+    offset, _, height, _, row = bmp_header(data)
+    return _checked(data, offset, offset + row * abs(height))
+
+#
+# Reads an uncompressed BMP's header: (where the pixels start, width, height,
+# bits per pixel, bytes per row). A negative height means stored top-down
+#
+def bmp_header(data):
     if data[:2] != b"BM":
         raise FormatError("not a BMP (it doesn't start with BM)")
     if len(data) < 34:
@@ -24,13 +32,11 @@ def bmp_pixels(data):
         raise FormatError("old OS/2 BMPs aren't supported")
     offset = int.from_bytes(data[10:14], "little")
     width = int.from_bytes(data[18:22], "little", signed=True)
-    height = int.from_bytes(data[22:26], "little", signed=True)  # negative means stored top-down
+    height = int.from_bytes(data[22:26], "little", signed=True)
     bits = int.from_bytes(data[28:30], "little")
-    compression = int.from_bytes(data[30:34], "little")
-    if compression not in (0, 3, 6):  # plain, or plain with bit masks
+    if int.from_bytes(data[30:34], "little") not in (0, 3, 6):  # plain, or plain with bit masks
         raise FormatError("compressed BMPs aren't supported")
-    row = (bits * width + 31) // 32 * 4  # rows are padded to 4 bytes
-    return _checked(data, offset, offset + row * abs(height))
+    return offset, width, height, bits, (bits * width + 31) // 32 * 4  # rows are padded to 4 bytes
 
 #
 # ppm-pixels target: the pixel data of a binary PPM (P6), PGM (P5) or PBM (P4)
