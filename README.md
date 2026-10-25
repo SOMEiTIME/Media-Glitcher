@@ -42,6 +42,8 @@ See [Pixel sort](#pixel-sort).
  * `--save-preset NAME_OR_FILE [--description TEXT]` save this run as a preset (`--force` to overwrite)
  * `--list-presets`
  * `--seed N` reproducible output
+ * `--preview` print the output afterwards, drawn with its file name, damage in red with its case swapped. Video plays in the terminal (Ctrl-C stops it). Needs ffmpeg for all but BMP and PPM, otherwise it maps the damaged bytes
+ * `--preview-word WORD` draw the preview with WORD instead
  * `-q` quiet
 
 ## Datamosh

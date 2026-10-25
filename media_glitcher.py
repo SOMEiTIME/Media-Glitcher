@@ -3,7 +3,7 @@
 # Command line entry point for glitching media
 
 import argparse, os, signal, sys
-import engine, pixel_sort, presets
+import engine, pixel_sort, presets, preview
 
 DEFAULT_PRESET = "default" # run when no operations are given
 SETTINGS = ("header_length", "header_bytes", "seed", "target") # preset fields the command line can override
@@ -100,6 +100,11 @@ def build_parser():
                         help="part of the file byte operations change: all is everything after --header-bytes, "
                              "auto picks one from the file type (default: %s)" % engine.DEFAULT_TARGET)
     parser.add_argument("--seed", type=int, help="random seed, for reproducible output")
+    parser.add_argument("--preview", action="store_true",
+                        help="print the output as text afterwards, drawn with a repeating word, the damage in red "
+                             "with its case swapped; video plays until it ends or Ctrl-C (ffmpeg for all but BMP and "
+                             "PPM, otherwise a map of the damaged bytes)")
+    parser.add_argument("--preview-word", metavar="WORD", help="word the preview is drawn with (default: the output file's name)")
     parser.add_argument("-q", "--quiet", action="store_true", help="don't print the file names or video progress")
     return parser
 
@@ -198,6 +203,11 @@ def main(argv=None):
         parser.exit(1, "error: %s\n" % error)
     with open(args.output_file, "wb") as file:
         file.write(data)
+    if args.preview:
+        # colour and playback only on a terminal, so piped output is plain text
+        terminal = sys.stdout.isatty()
+        preview.show(args.input_file, args.output_file, sys.stdout, args.preview_word,
+                     color=terminal and "NO_COLOR" not in os.environ, animate=terminal)
 
 #
 # Runs main, exiting quietly on Ctrl-C (no traceback) and treating SIGTERM

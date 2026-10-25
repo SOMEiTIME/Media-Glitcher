@@ -4,10 +4,10 @@ Small Python 3 tool that glitches media files (images, video) by swapping and co
 
 ## Run
 ```
-python3 media_glitcher.py input_file output_file [--swap I,F] [--corrupt I,F] [--byte-swap S,E] [--byte-corrupt E] [--bitflip R] [--repeat S,E] [--iframe-drop K] [--pframe-repeat E,C] [--pixel-sort K,L,H,A] [--preset NAME_OR_FILE] [--save-preset NAME_OR_FILE] [--header-length N] [--header-bytes N] [--target T] [--seed N]
+python3 media_glitcher.py input_file output_file [--swap I,F] [--corrupt I,F] [--byte-swap S,E] [--byte-corrupt E] [--bitflip R] [--repeat S,E] [--iframe-drop K] [--pframe-repeat E,C] [--pixel-sort K,L,H,A] [--preset NAME_OR_FILE] [--save-preset NAME_OR_FILE] [--header-length N] [--header-bytes N] [--target T] [--seed N] [--preview] [--preview-word W]
 python3 media_glitcher.py --list-presets
 ```
-- Python 3 (ported from 2.7), stdlib only (it also runs in a-Shell on iPhone). The one exception is `--pixel-sort`, which imports NumPy lazily and uses ffmpeg for formats other than PPM; keep everything else working without them. Files are read as bytes; line mode decodes them as latin-1 so binary data round-trips byte for byte.
+- Python 3 (ported from 2.7), stdlib only (it also runs in a-Shell on iPhone). The one exception is `--pixel-sort`, which imports NumPy lazily and uses ffmpeg for formats other than PPM; `--preview` also uses ffmpeg when it's there, but falls back to stdlib. Keep everything else working without them. Files are read as bytes; line mode decodes them as latin-1 so binary data round-trips byte for byte.
 - Don't run it on files in `examples/`; the output path gets overwritten.
 
 ## Layout
@@ -19,6 +19,7 @@ python3 media_glitcher.py --list-presets
 - `jpeg.py` — JPEG marker parser for the `jpeg-scan`/`jpeg-tables` targets (`engine.FORMAT_TARGETS`). A target gives the byte ranges to glitch and a repair step afterwards (no stray FF in scan data, no zero quantization values).
 - `uncompressed.py` — BMP, PPM/PGM/PBM, WAV and AIFF targets: find the raw data from the header, no repair needed. `engine.detect_target()` picks a target for `--target auto`. Don't use the stdlib `aifc` module (removed in Python 3.13, which a-Shell runs).
 - `pixel_sort.py` — pixel mode: `pixel_sort(frame, key, low, high, angle)` on an H x W x 3 uint8 or uint16 NumPy array (vectorized, no per-pixel loops), and `decode`, which reads 8 or 16-bit PPM directly or another format through ffmpeg and returns the frames (streamed one at a time for video) with a matching encoder. Uses no random draws, so seeded output of other operations doesn't change.
+- `preview.py` — `--preview`: draws the output as text with a repeating word (grey by brightness, damage red and case swapped). BMP/PPM read directly with exact damage; other images and video through ffmpeg, video played in place with each frame matched to the closest nearby input frame; otherwise a byte map. Stdlib only, no random draws.
 - `presets.py` — load/validate/save/apply presets; no CLI dependency, safe to import elsewhere.
 - `presets/` — preset JSON files. `default` is what runs with no operations.
 - `tests/` — `python3 -m unittest discover -s tests`. `tests/fixtures/` holds small JPEGs made with `cjpeg` (baseline, progressive, restart markers), a BMP made with Pillow and a WAV made with `wave`. Pixel-sort tests skip without NumPy, and their JPEG and video tests skip without a working ffmpeg.
