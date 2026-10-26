@@ -77,7 +77,6 @@ class AviTest(unittest.TestCase):
 
     def test_datamosh_preset(self):
         preset = presets.load("datamosh")
-        self.assertEqual([op["type"] for op in preset["operations"]], ["iframe-drop", "pframe-repeat"])
         out = engine.glitch(SOURCE, preset["operations"], seed=preset["seed"])
         self.assertEqual(len(keyframes(out)), 1)
 

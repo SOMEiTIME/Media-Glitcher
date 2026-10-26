@@ -120,7 +120,7 @@ python3 media_glitcher.py in.avi out.avi --swap 200,50 --corrupt 200,30 --save-p
 ```
 Command line options override the preset's `header_length`, `header_bytes`, `target` and `seed`. A preset with a `seed` always gives the same output.
 
-`recommended` has the settings that worked well on their own and together. It's also split into `swaps-sparse`, `swaps-frequent` and `corrupt-escalating`, so you can combine them (`--preset swaps-frequent --preset corrupt-escalating`). All three runs the same operations in a different order, so the result differs.
+`recommended` has the settings that worked well on their own and together. It's also split into `swaps-sparse`, `swaps-frequent` and `corrupt-escalating`, so you can combine them (`--preset swaps-frequent --preset corrupt-escalating`). All three together run the same operations in a different order, so the result differs.
 
 `presets.py` and `engine.py` don't depend on the CLI, so you can import them: `presets.load()`, `engine.glitch(data, operations, ...)`.
 

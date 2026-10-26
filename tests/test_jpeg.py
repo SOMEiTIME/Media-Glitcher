@@ -1,4 +1,4 @@
-import os, sys, tempfile, unittest
+import contextlib, io, os, sys, tempfile, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
@@ -84,7 +84,8 @@ class TargetTest(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         saved = os.path.join(directory.name, "p.json")
-        media_glitcher.main(["--save-preset", saved, "--bitflip", "0.01", "--target", "jpeg-tables", "-q"])
+        with contextlib.redirect_stdout(io.StringIO()):
+            media_glitcher.main(["--save-preset", saved, "--bitflip", "0.01", "--target", "jpeg-tables", "-q"])
         loaded = presets.load(saved)
         self.assertEqual((loaded["target"], "header_bytes" in loaded), ("jpeg-tables", False))
         with self.assertRaises(presets.PresetError):

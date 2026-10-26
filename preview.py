@@ -121,13 +121,11 @@ def _grid(width, height, columns, rows):
 def _raw_layout(data):
     try:
         if data[:2] == b"BM":
-            (start, _), = uncompressed.bmp_pixels(data)
-            width = int.from_bytes(data[18:22], "little", signed=True)
-            height = int.from_bytes(data[22:26], "little", signed=True)
-            bits = int.from_bytes(data[28:30], "little")
+            uncompressed.bmp_pixels(data)  # checks the pixels are all there
+            start, width, height, bits, stride = uncompressed.bmp_header(data)
             if bits not in (24, 32) or width <= 0:
                 return None
-            return start, width, abs(height), (bits * width + 31) // 32 * 4, bits // 8, (2, 1, 0), height > 0
+            return start, width, abs(height), stride, bits // 8, (2, 1, 0), height > 0
         if data[:2] in (b"P5", b"P6"):
             uncompressed.ppm_pixels(data)  # checks the pixels are all there
             kind, (width, height, maxval), start = uncompressed.ppm_header(data)

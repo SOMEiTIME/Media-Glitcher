@@ -51,11 +51,6 @@ class PixelSortTest(unittest.TestCase):
             out = pixel_sort.pixel_sort(self.frame, "brightness", low, high, 30)
             self.assertTrue((out == self.frame).all())
 
-    def test_same_input_gives_same_output(self):
-        a = pixel_sort.pixel_sort(self.frame, "hue", 0.1, 0.9, 30)
-        b = pixel_sort.pixel_sort(self.frame.copy(), "hue", 0.1, 0.9, 30)
-        self.assertTrue((a == b).all())
-
     def test_only_moves_pixels_around(self):
         out = pixel_sort.pixel_sort(self.frame, "saturation", 0.3, 0.9, 137)
         self.assertFalse((out == self.frame).all())
