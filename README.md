@@ -44,7 +44,7 @@ See [Pixel sort](#pixel-sort).
  * `--list-presets`
  * `--seed N` reproducible output
  * `--preview` / `--no-preview` print the output afterwards (on by default in a terminal, off with `-q`), drawn with its file name, damage in red with its case swapped. Video plays in the terminal (Ctrl-C stops it). Needs ffmpeg for all but BMP and PPM, otherwise it maps the damaged bytes
- * `--preview-word WORD` draw the preview with WORD instead
+ * `--preview-word WORD` draw the preview with WORD instead (default: the output's name, or GLTCHR when the output is left out)
  * `-q` quiet, no file names or progress, and no preview unless `--preview` is given
 
 ## Datamosh

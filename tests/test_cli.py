@@ -1,7 +1,7 @@
 import contextlib, io, json, os, random, sys, tempfile, unittest, unittest.mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import engine, media_glitcher, presets
+import engine, media_glitcher, presets, preview
 
 # runs the CLI with its output (usage errors, "Saved preset") hidden
 def main(args):
@@ -83,6 +83,13 @@ class CliTest(unittest.TestCase):
                  unittest.mock.patch("preview.show") as show:
                 media_glitcher.main([self.source, self.path("o"), "--swap", "50,2", *flags])
                 self.assertEqual(show.called, shown)
+
+    def test_preview_word_is_gltchr_for_the_default_output(self):
+        for args, word in [([], preview.DEFAULT_WORD), ([self.path("o")], None),
+                           (["--preview-word", "zz"], "zz")]:
+            with self.subTest(args=args), unittest.mock.patch("preview.show") as show:
+                main([self.source, *args, "--swap", "50,2", "-q", "--preview"])
+                self.assertEqual(show.call_args.args[3], word)
 
     def test_save_refuses_to_overwrite_without_force(self):
         saved = self.path("mine.json")

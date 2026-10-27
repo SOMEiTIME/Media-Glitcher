@@ -16,7 +16,7 @@ import os, shutil, subprocess, time
 import uncompressed
 
 FPS = 12                 # video playback rate
-DEFAULT_WORD = "GLTCHR"  # when the file name has nothing printable
+DEFAULT_WORD = "GLTCHR"  # when the file name has nothing printable, or the output name was defaulted
 GREYS = range(232, 256)  # xterm 256-colour greys, dark to light
 REDS = (52, 88, 124, 160, 196, 203, 210, 217, 224, 231)  # dark red to white, for damage
 CAPTION = 244            # grey of the line under the picture

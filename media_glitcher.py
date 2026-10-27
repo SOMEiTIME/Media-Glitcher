@@ -110,7 +110,8 @@ def build_parser():
                         help="print the output as text afterwards (default: on in a terminal without -q), drawn with "
                              "a repeating word, the damage in red with its case swapped; video plays until it ends or Ctrl-C (ffmpeg for all but BMP and "
                              "PPM, otherwise a map of the damaged bytes)")
-    parser.add_argument("--preview-word", metavar="WORD", help="word the preview is drawn with (default: the output file's name)")
+    parser.add_argument("--preview-word", metavar="WORD", help="word the preview is drawn with (default: the output file's name, or %s "
+                             "if none was given)" % preview.DEFAULT_WORD)
     parser.add_argument("-q", "--quiet", action="store_true",
                         help="don't print the file names, video progress or (unless --preview) the preview")
     return parser
@@ -169,6 +170,9 @@ def main(argv=None):
             parser.error("input_file is required")
         if args.output_file is None:
             args.output_file = default_output(args.input_file)
+            # NAME-glitched would just repeat the input's name, so use the tool's
+            if args.preview_word is None:
+                args.preview_word = preview.DEFAULT_WORD
         if args.input_file == args.output_file:
             parser.error("input and output files must be different")
     # checked before glitching, so a refused save doesn't leave a half-finished run
