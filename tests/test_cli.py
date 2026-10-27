@@ -1,4 +1,4 @@
-import contextlib, io, json, os, random, sys, tempfile, unittest
+import contextlib, io, json, os, random, sys, tempfile, unittest, unittest.mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import engine, media_glitcher, presets
@@ -66,11 +66,23 @@ class CliTest(unittest.TestCase):
         self.assertEqual(self.run_cli("a", "--preset", saved), self.run_cli("b", "--swap", "50,2",
                          "--corrupt", "300,5", "--seed", "9", "--header-length", "0"))
 
-    def test_save_with_missing_output_saves_nothing(self):
-        saved = self.path("half.json")
-        with self.assertRaises(SystemExit):
-            main([self.source, "--save-preset", saved, "--swap", "50,2"])
-        self.assertFalse(os.path.exists(saved))
+    def test_output_defaults_to_glitched_name_beside_input(self):
+        saved = self.path("mine.json")
+        main([self.source, "--save-preset", saved, "--swap", "50,2", "--seed", "3", "-q"])
+        self.assertTrue(os.path.exists(saved))
+        with open(self.path("in-glitched.bin"), "rb") as f:
+            self.assertEqual(f.read(), self.run_cli("o", "--swap", "50,2", "--seed", "3"))
+
+    def test_preview_defaults_to_on_in_a_terminal_without_quiet(self):
+        cases = [(True, [], True), (True, ["-q"], False), (True, ["--no-preview"], False),
+                 (False, [], False), (False, ["-q", "--preview"], True)]
+        for terminal, flags, shown in cases:
+            # stdout is redirected first, so isatty is patched on the redirect
+            with self.subTest(terminal=terminal, flags=flags), contextlib.redirect_stdout(io.StringIO()), \
+                 unittest.mock.patch("sys.stdout.isatty", return_value=terminal), \
+                 unittest.mock.patch("preview.show") as show:
+                media_glitcher.main([self.source, self.path("o"), "--swap", "50,2", *flags])
+                self.assertEqual(show.called, shown)
 
     def test_save_refuses_to_overwrite_without_force(self):
         saved = self.path("mine.json")

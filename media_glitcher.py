@@ -67,6 +67,11 @@ class AddOperation(argparse.Action):
             new = [values]
         namespace.operations = namespace.operations + new
 
+# where the output goes when none is given: NAME-glitched.EXT beside the input
+def default_output(input_file):
+    stem, ext = os.path.splitext(input_file)
+    return stem + "-glitched" + ext
+
 # first argument that isn't None
 def first_set(*values):
     return next((v for v in values if v is not None), None)
@@ -76,7 +81,8 @@ def build_parser():
         description="Glitch a media file by swapping and corrupting its raw data, by lines or by bytes.",
         epilog="Operations run in the order given. With none given, the '%s' preset is used." % DEFAULT_PRESET)
     parser.add_argument("input_file", nargs="?", help="file to glitch")
-    parser.add_argument("output_file", nargs="?", help="where to write the glitched file (overwritten)")
+    parser.add_argument("output_file", nargs="?",
+                        help="where to write the glitched file, overwritten (default: NAME-glitched.EXT next to the input)")
     for op_type in engine.OPERATIONS:
         parse, metavar = operation_arg(op_type)
         parser.add_argument("--" + op_type, metavar=metavar, type=parse, action=AddOperation,
@@ -100,12 +106,13 @@ def build_parser():
                         help="part of the file byte operations change: all is everything after --header-bytes, "
                              "auto picks one from the file type (default: %s)" % engine.DEFAULT_TARGET)
     parser.add_argument("--seed", type=int, help="random seed, for reproducible output")
-    parser.add_argument("--preview", action="store_true",
-                        help="print the output as text afterwards, drawn with a repeating word, the damage in red "
-                             "with its case swapped; video plays until it ends or Ctrl-C (ffmpeg for all but BMP and "
+    parser.add_argument("--preview", action=argparse.BooleanOptionalAction,
+                        help="print the output as text afterwards (default: on in a terminal without -q), drawn with "
+                             "a repeating word, the damage in red with its case swapped; video plays until it ends or Ctrl-C (ffmpeg for all but BMP and "
                              "PPM, otherwise a map of the damaged bytes)")
     parser.add_argument("--preview-word", metavar="WORD", help="word the preview is drawn with (default: the output file's name)")
-    parser.add_argument("-q", "--quiet", action="store_true", help="don't print the file names or video progress")
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help="don't print the file names, video progress or (unless --preview) the preview")
     return parser
 
 #
@@ -155,11 +162,13 @@ def main(argv=None):
     if header_bytes < 0:
         parser.error("--header-bytes must not be negative")
 
-    # --save-preset on its own only saves; otherwise both files are needed
+    # --save-preset on its own only saves; otherwise an input file is needed
     glitching = args.input_file is not None or not args.save_preset
     if glitching:
+        if args.input_file is None:
+            parser.error("input_file is required")
         if args.output_file is None:
-            parser.error("input_file and output_file are required")
+            args.output_file = default_output(args.input_file)
         if args.input_file == args.output_file:
             parser.error("input and output files must be different")
     # checked before glitching, so a refused save doesn't leave a half-finished run
@@ -203,9 +212,9 @@ def main(argv=None):
         parser.exit(1, "error: %s\n" % error)
     with open(args.output_file, "wb") as file:
         file.write(data)
-    if args.preview:
-        # colour and playback only on a terminal, so piped output is plain text
-        terminal = sys.stdout.isatty()
+    # colour and playback only on a terminal, so piped output is plain text
+    terminal = sys.stdout.isatty()
+    if first_set(args.preview, terminal and not args.quiet):
         preview.show(args.input_file, args.output_file, sys.stdout, args.preview_word,
                      color=terminal and "NO_COLOR" not in os.environ, animate=terminal)
 
