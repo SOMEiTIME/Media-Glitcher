@@ -4,10 +4,11 @@ Small Python 3 tool that glitches media files (images, video, audio) by changing
 
 ## Run
 ```
-python3 media_glitcher.py input_file output_file [operations] [options]   # -h lists them
+python3 media_glitcher.py input_file [output_file] [operations] [options]   # -h lists them
 python3 media_glitcher.py --list-presets
 ```
 - Python 3 (ported from 2.7), stdlib only (it also runs in a-Shell on iPhone). The one exception is `--pixel-sort`, which imports NumPy lazily and uses ffmpeg for formats other than PPM; `--preview` also uses ffmpeg when it's there, but falls back to stdlib. Keep everything else working without them. Files are read as bytes; line mode decodes them as latin-1 so binary data round-trips byte for byte.
+- The output defaults to `NAME-glitched.EXT` beside the input (previewed with `GLTCHR`), and the preview is on by default when stdout is a terminal and `-q` isn't given.
 - Don't run it on files in `examples/`; the output path gets overwritten.
 
 ## Layout

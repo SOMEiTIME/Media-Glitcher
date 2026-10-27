@@ -3,8 +3,9 @@ for python 3
 
 ## Usage
 ```
-python3 media_glitcher.py input_file output_file [options]
+python3 media_glitcher.py input_file [output_file] [options]
 ```
+The output defaults to `NAME-glitched.EXT` next to the input. In a terminal, a text preview of it is printed afterwards (see `--preview`).
 
 Four modes, mix them in one run:
 
@@ -42,9 +43,9 @@ See [Pixel sort](#pixel-sort).
  * `--save-preset NAME_OR_FILE [--description TEXT]` save this run as a preset (`--force` to overwrite)
  * `--list-presets`
  * `--seed N` reproducible output
- * `--preview` print the output afterwards, drawn with its file name, damage in red with its case swapped. Video plays in the terminal (Ctrl-C stops it). Needs ffmpeg for all but BMP and PPM, otherwise it maps the damaged bytes
- * `--preview-word WORD` draw the preview with WORD instead
- * `-q` quiet
+ * `--preview` / `--no-preview` print the output afterwards (on by default in a terminal, off with `-q`), drawn with its file name, damage in red with its case swapped. Video plays in the terminal (Ctrl-C stops it). Needs ffmpeg for all but BMP and PPM, otherwise it maps the damaged bytes
+ * `--preview-word WORD` draw the preview with WORD instead (default: the output's name, or GLTCHR when the output is left out)
+ * `-q` quiet, no file names or progress, and no preview unless `--preview` is given
 
 ## Datamosh
 Dropping a keyframe makes the following P-frames apply their motion to the old picture. Repeating a P-frame smears it. Audio is untouched and the index is dropped (players rebuild it). Try `--preset datamosh`.
